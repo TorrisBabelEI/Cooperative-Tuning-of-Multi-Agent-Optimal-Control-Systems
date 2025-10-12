@@ -21,18 +21,110 @@ class halfspaceBuilder:
     Close the window: Terminate the process and generate Zeta and iota for the constraints
     """
 
-    def __init__(self):
-        self.saved = []  # list of (A_row (2,), b_scalar)
-        self.current_pts = []  # points for current halfspace construction
-        # plotting
+    def __init__(self, initial_traj = None):
+        self.saved = []
+        self.current_pts = []
         self.fig, self.ax = plt.subplots()
-        self.ax.set_title(self._title_text())
-        self.ax.set_xlim(-10, 10)
-        self.ax.set_ylim(-10, 10)
+        self.ax.set_title("Left click to pick: p1, p2, side. Right click to Undo. Close window to terminate.")
+        self.ax.set_xlim(-2.4, 2.4)
+        self.ax.set_ylim(-1.8, 1.6)
         self.ax.set_aspect('equal', 'box')
-        self.cid_click = self.fig.canvas.mpl_connect('button_press_event', self.on_click)
-        self.cid_key = self.fig.canvas.mpl_connect('key_press_event', self.on_key)
-        self.line_artists = []  # plotted constraint lines
-        self.pt_artists = []  # plotted points for current halfspace
-        self.saved_artists = []  # markers for saved side points (optional)
 
+        if initial_traj is not None:
+            self.ax.plot(initial_traj[:,0], initial_traj[:,1], 'b-', alpha=0.5, label='Trajectory')
+            self.ax.legend()
+
+        self.cid_click = self.fig.canvas.mpl_connect('button_press_event', self.on_click)
+        self.cid_close = self.fig.canvas.mpl_connect('close_event', self.on_close)
+
+        self.line_artists = []
+        self.fill_artists = []
+        self.pt_artists = []
+
+    def on_click(self, event):
+        if event.inaxes != self.ax:
+            return
+
+        if event.button == 1:  # left
+            self._add_point(event)
+        elif event.button == 3:  # right
+            self._undo()
+
+    def _add_point(self, event):
+        x, y = event.xdata, event.ydata
+        self.current_pts.append(np.array([x, y]))
+        self._update_temp_points()
+
+        if len(self.current_pts) == 3:
+            p1, p2, side = self.current_pts
+            Arow, b = self._pts_to_halfspace(p1, p2, side)
+            self.saved.append((Arow, b))
+            self._plot_halfspace(Arow, b)
+            self._clear_current()
+
+    def _undo(self):
+        if self.current_pts:
+            self.current_pts.pop()
+            self._update_temp_points()
+        elif self.saved:
+            self.saved.pop()
+            if self.line_artists:
+                self.line_artists.pop().remove()
+            if self.fill_artists:
+                self.fill_artists.pop().remove()
+            self.fig.canvas.draw_idle()
+
+    def _update_temp_points(self):
+        for p in self.pt_artists:
+            p.remove()
+        self.pt_artists = [self.ax.plot(pt[0], pt[1], 'ko', markersize=6)[0] for pt in self.current_pts]
+        self.fig.canvas.draw_idle()
+
+    def _clear_current(self):
+        for p in self.pt_artists:
+            p.remove()
+        self.pt_artists = []
+        self.current_pts = []
+        self.fig.canvas.draw_idle()
+
+    def _pts_to_halfspace(self, p1, p2, side_pt):
+        v = p2 - p1
+        n = np.array([v[1], -v[0]])
+        if np.linalg.norm(n) < 1e-8:
+            raise ValueError("p1 is too close to p2.")
+        b = np.dot(n, p1)
+        if np.dot(n, side_pt) > b:
+            n = -n
+            b = -b
+        n /= np.linalg.norm(n)
+        b /= np.linalg.norm(n)
+        return n, b
+
+    def _plot_halfspace(self, Arow, b):
+        xmin, xmax = self.ax.get_xlim()
+        ymin, ymax = self.ax.get_ylim()
+        a1, a2 = Arow
+        if abs(a2) > 1e-8:
+            x_vals = np.linspace(xmin, xmax, 200)
+            y_vals = (b - a1*x_vals)/a2
+        else:
+            x_vals = np.full(2, b/a1)
+            y_vals = np.array([ymin, ymax])
+
+        line = self.ax.plot(x_vals, y_vals, 'r-', lw=2)[0]
+        self.line_artists.append(line)
+
+        # shade Ax <= b region
+        X, Y = np.meshgrid(np.linspace(xmin, xmax, 200), np.linspace(ymin, ymax, 200))
+        Z = Arow[0]*X + Arow[1]*Y - b
+        fill = self.ax.contourf(X, Y, Z, levels=[-1e9, 0], colors=['#ffcccc'], alpha=0.3)
+        self.fill_artists.append(fill)
+        self.fig.canvas.draw_idle()
+
+    def on_close(self, event):
+        A = np.vstack([a for a, _ in self.saved]) if self.saved else np.zeros((0,2))
+        b = np.array([b for _, b in self.saved]) if self.saved else np.zeros((0,))
+        print("\n=== Decided Constraints ===")
+        for i, (a, bi) in enumerate(zip(A, b)):
+            print(f"{i}: A = [{a[0]:.4f}, {a[1]:.4f}], b = {bi:.4f}")
+        self.A, self.b = A, b
