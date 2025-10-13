@@ -1,5 +1,6 @@
 import numpy as np
 import matplotlib.pyplot as plt
+import math
 
 class halfspaceBuilder:
     """
@@ -21,18 +22,37 @@ class halfspaceBuilder:
     Close the window: Terminate the process and generate Zeta and iota for the constraints
     """
 
-    def __init__(self, initial_traj = None):
+    def __init__(self, initial_traj, initial_states, terminal_states,
+                 xlim = [-2.4, 2.4], ylim = [-1.8, 1.6], numAgent = 1, legendFlag = False):
         self.saved = []
         self.current_pts = []
-        self.fig, self.ax = plt.subplots()
+        self.fig, self.ax = plt.subplots(1, 1)
         self.ax.set_title("Left click to pick: p1, p2, side. Right click to Undo. Close window to terminate.")
-        self.ax.set_xlim(-2.4, 2.4)
-        self.ax.set_ylim(-1.8, 1.6)
+        self.ax.set_xlim(xlim)
+        self.ax.set_ylim(ylim)
         self.ax.set_aspect('equal', 'box')
 
-        if initial_traj is not None:
-            self.ax.plot(initial_traj[:,0], initial_traj[:,1], 'b-', alpha=0.5, label='Trajectory')
-            self.ax.legend()
+        self.numAgent = numAgent
+
+        for idx in range(self.numAgent):
+            self.ax.plot(initial_traj[idx][:,0], initial_traj[idx][:,1], color='blue', alpha=.75)
+            self.ax.scatter(initial_states[idx, 0], initial_states[idx, 1], marker="o", color="magenta")
+            self.ax.scatter(terminal_states[idx, 0], terminal_states[idx, 1], marker="^", color="green")
+
+            self._plot_arrow(initial_states[idx, :])
+            self._plot_arrow(initial_traj[idx][-1, :])
+
+        if legendFlag:
+            labels = ["Start", "Goal"]
+            marker = ["o", "^"]
+            colors = ["magenta", "green"]
+            f = lambda m,c: plt.plot([], [], marker=m, color=c, ls="none")[0]
+            handles = [f(marker[i], colors[i]) for i in range(len(labels))]
+            handles.append(plt.plot([],[], color="blue", linewidth=2)[0])
+            labels.append("Trajectory")
+            handles.append(plt.plot([],[], linestyle=None, color="red", linewidth=2)[0])
+            labels.append("Shepherding Bondary [Infeasible Shaded]")
+            plt.legend(handles, labels, bbox_to_anchor=(1, 1), loc="upper left", framealpha=1)
 
         self.cid_click = self.fig.canvas.mpl_connect('button_press_event', self.on_click)
         self.cid_close = self.fig.canvas.mpl_connect('close_event', self.on_close)
@@ -40,6 +60,13 @@ class halfspaceBuilder:
         self.line_artists = []
         self.fill_artists = []
         self.pt_artists = []
+
+    def _plot_arrow(self, stateNow):
+        magnitude = 0.1
+        dx = magnitude * math.cos(stateNow[2])
+        dy = magnitude * math.sin(stateNow[2])
+        # width = 0.03
+        plt.arrow(stateNow[0], stateNow[1], dx, dy, alpha=0.5, color="green")
 
     def on_click(self, event):
         if event.inaxes != self.ax:
@@ -117,7 +144,7 @@ class halfspaceBuilder:
         # shade Ax <= b region
         X, Y = np.meshgrid(np.linspace(xmin, xmax, 200), np.linspace(ymin, ymax, 200))
         Z = Arow[0]*X + Arow[1]*Y - b
-        fill = self.ax.contourf(X, Y, Z, levels=[-1e9, 0], colors=['#ffcccc'], alpha=0.3)
+        fill = self.ax.contourf(X, Y, Z, levels=[-1e9, 0], colors=['#ff6666'], alpha=0.5)
         self.fill_artists.append(fill)
         self.fig.canvas.draw_idle()
 
@@ -128,3 +155,8 @@ class halfspaceBuilder:
         for i, (a, bi) in enumerate(zip(A, b)):
             print(f"{i}: A = [{a[0]:.4f}, {a[1]:.4f}], b = {bi:.4f}")
         self.A, self.b = A, b
+
+def halfspace_io(initial_traj, initial_state, xlim = [-2.4, 2.4], ylim = [-1.8, 1.6], numAgent = 1):
+    builder = halfspaceBuilder(initial_traj, initial_state, xlim, ylim, numAgent)
+    plt.show()
+    return builder.A, builder.b

@@ -42,7 +42,7 @@ if __name__ == '__main__':
     for idx in range(adjacencyMatList[0].shape[0]):
         listOcSystem.append(OcSystem(DynSystem=Unicycle(configDict), configDict=configDict))
     # initialize multiple agents in a Cooperative Tuning Framework
-    MyMultiPDP = MultiPDP(listOcSystem, adjacencyMatList, graphPeriodicFlag=True)
+    MyMultiPDP = MultiPDP(listOcSystem, adjacencyMatList, graphPeriodicFlag=True, xlim = [-10, 10], ylim = [-10, 10])
 
 
     # # for static graph

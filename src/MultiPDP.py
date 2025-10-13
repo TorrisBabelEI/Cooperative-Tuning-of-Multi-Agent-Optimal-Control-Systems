@@ -4,17 +4,22 @@ import numpy as np
 import matplotlib.pyplot as plt
 from matplotlib.ticker import MaxNLocator
 from PDP import PDP
+from halfspaces import halfspace_io
 
 
 class MultiPDP:
     numAgent: int  # number of agents
     optMethodStr: str  # a string for optimization method
 
-    def __init__(self, listOcSystem: list, adjacencyMat, graphPeriodicFlag=False):
+    def __init__(self, listOcSystem: list, adjacencyMat, graphPeriodicFlag=False, xlim = [-2.4, 2.4], ylim = [-1.8, 1.6]):
         self.listOcSystem = listOcSystem
         self.numAgent = len(listOcSystem)
         self.configDict = listOcSystem[0].configDict
         self.graphPeriodicFlag = graphPeriodicFlag
+        self.xlim = xlim
+        self.ylim = ylim
+        self.zeta = None  # Halfspace matrix (zeta^T y <= iota)
+        self.iota = None  # Halfspace vector
         if not graphPeriodicFlag:
             self.adjacencyMat = adjacencyMat
             self.generateMetropolisWeight(adjacencyMat)
@@ -103,8 +108,8 @@ class MultiPDP:
         for idx in range(self.numAgent):
             resultDictList.append(self.listOcSystem[idx].solve(initialStateAll[idx], initialThetaAll[idx]))
 
-        # visualize the initial result
-        self.visualize(resultDictList, initialStateAll, initialThetaAll, blockFlag=False, legendFlag=False)
+        # acquire shepherding boundaries <------------------------------------------ Here
+        self.zeta, self.iota = self.defineHalfspaces(resultDictList, initialStateAll, initialThetaAll, legendFlag=False)
 
         thetaNowAll = initialThetaAll
         lossTraj = list()
@@ -208,22 +213,56 @@ class MultiPDP:
         magnitude = 0.1
         dx = magnitude * math.cos(stateNow[2])
         dy = magnitude * math.sin(stateNow[2])
-        width = 0.03
+        # width = 0.03
         # plt.arrow(stateNow[0], stateNow[1], dx, dy, alpha=0.5, color="green", width=width, head_width=7*width, head_length=3*width)
         plt.arrow(stateNow[0], stateNow[1], dx, dy, alpha=0.5, color="green")
+
+    def plotAHalfspace(self, ax, zetaRow, iota):
+        xmin, xmax = self.xlim
+        ymin, ymax = self.ylim
+        zeta1, zeta2 = zetaRow
+
+        # Boundary line (Ax = b)
+        if abs(zeta2) > 1e-8:
+            x_vals = np.linspace(xmin, xmax, 5)
+            y_vals = (iota - zeta1 * x_vals) / zeta2
+        else:
+            x_vals = np.full(2, iota / zeta1)
+            y_vals = np.array([ymin, ymax])
+        ax.plot(x_vals, y_vals, 'r-', lw=2)
+
+        # Shaded Area (Ax <= b)
+        X, Y = np.meshgrid(np.linspace(xmin, xmax, 200),
+                           np.linspace(ymin, ymax, 200))
+        Z = zeta1 * X + zeta2 * Y - iota
+        ax.contourf(X, Y, Z, levels=[-1e9, 0],
+                    colors=['#ff6666'], alpha=0.5)
+
+
+    def defineHalfspaces(self, resultDictList, initialStateAll, thetaAll, legendFlag=False):
+        return halfspace_io(initial_traj = [resultDictList[idx]["xTraj"] for idx in range(self.numAgent)],
+                            initial_states = initialStateAll, 
+                            terminal_states = thetaAll,
+                            xlim = self.xlim, ylim = self.ylim, 
+                            numAgent = self.numAgent, legendFlag = legendFlag)
+        
 
     def visualize(self, resultDictList, initialStateAll, thetaAll, blockFlag=True, legendFlag=True):
         _, ax1 = plt.subplots(1, 1)
 
         for idx in range(self.numAgent):
             ax1.plot(resultDictList[idx]["xTraj"][:,0], resultDictList[idx]["xTraj"][:,1], color="blue", linewidth=2)
-            ax1.scatter(initialStateAll[idx, 0], initialStateAll[idx, 1], marker="o", color="blue")
-            ax1.scatter(thetaAll[idx, 0], thetaAll[idx, 1], marker="*", color="red")
+            ax1.scatter(initialStateAll[idx, 0], initialStateAll[idx, 1], marker="o", color="magenta")
+            ax1.scatter(thetaAll[idx, 0], thetaAll[idx, 1], marker="^", color="green")
 
         # plot arrows for heading angles
         for idx in range(self.numAgent):
             self.plotArrow(initialStateAll[idx, :])
             self.plotArrow(resultDictList[idx]["xTraj"][-1, :])
+
+        if self.iota is not None:
+            for Ai, bi in zip(self.zeta, self.iota):
+                self.plot_halfspace(ax1, Ai, bi)
 
         # ax1.set_title("Trajectory")
         ax1.set_xlabel("x [m]")
@@ -232,12 +271,15 @@ class MultiPDP:
         # plot legends
         if legendFlag:
             labels = ["Start", "Goal"]
-            marker = ["o", "*"]
+            marker = ["o", "^"]
             colors = ["blue", "red"]
             f = lambda m,c: plt.plot([], [], marker=m, color=c, ls="none")[0]
             handles = [f(marker[i], colors[i]) for i in range(len(labels))]
             handles.append(plt.plot([],[], linestyle=None, color="blue", linewidth=2)[0])
             labels.append("Trajectory")
+            if self.iota is not None:
+                handles.append(plt.plot([],[], linestyle=None, color="red", linewidth=2)[0])
+                labels.append("Shepherding Bondary [Infeasible Shaded]")
             plt.legend(handles, labels, bbox_to_anchor=(1, 1), loc="upper left", framealpha=1)
 
         _, (ax21, ax22, ax23) = plt.subplots(3, 1)
