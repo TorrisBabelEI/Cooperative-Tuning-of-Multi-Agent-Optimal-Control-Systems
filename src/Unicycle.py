@@ -101,14 +101,38 @@ class Unicycle:
             dynCons = casadi.vertcat(dynCons, currentCons)
         return dynCons
 
-    def _lossFun(self, xAll, uAll, theta):
-        xTerminal = xAll[self.dimStatesAll-self.dimStates:]
+    def _lossFun(self, xAll, uAll, theta, zeta = None, iota = None, sigma = 1):
+        # xTerminal = xAll[self.dimStatesAll-self.dimStates:]
 
+        # Heading error was not used in the demo
         # headingError = 1 - casadi.cos(xTerminal[2]) * casadi.cos(theta[2]) - casadi.sin(xTerminal[2]) * casadi.sin(theta[2])
         # loss = 1 * ((xTerminal[0]-theta[0]) ** 2 + (xTerminal[1]-theta[1]) ** 2 + 10 * headingError)
 
-        loss = 100 * ((xTerminal[0]-theta[0]) ** 2 + (xTerminal[1]-theta[1]) ** 2)
-        return loss
+        # loss = 100 * ((xTerminal[0]-theta[0]) ** 2 + (xTerminal[1]-theta[1]) ** 2)
+
+        # return loss
+
+        # Construct out-of-shepherding-boundary loss here
+        if zeta is None or iota is None:
+            return 0.0
+
+        shepherd_loss = 0.0
+
+        for step in range(self.horizonSteps + 1):
+            posStep = casadi.vertcat(xAll[self.dimStates * step],
+                                     xAll[self.dimStates * step + 1])   # Extract positions at each step
+            # Extract Positions
+            shepherd_loss += casadi.sum1(self.softplus(casadi.mtimes(zeta, posStep) - iota), sigma)
+        return shepherd_loss
+    
+    def softplus(self, lossStep, sigma):
+        """
+        A smooth approximation of the common ReLU function
+        Calculate the softplus function for all shepherding boundaries of an agent
+        lossStep is expected to be a column vector
+        sigma is used to adjust the smoothness at the turning corner of 0
+        """
+        return sigma*casadi.log(1 + casadi.exp(lossStep/sigma))
 
     def plotArrow(self, stateNow):
         magnitude = 0.1

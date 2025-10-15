@@ -18,45 +18,46 @@ if __name__ == '__main__':
     # row i is the adjacency for agent i
 
     # for periodic graph
-    adjacencyMat1 = np.array([
-        [1, 1, 0, 0, 0],
-        [0, 1, 0, 0, 0],
-        [1, 0, 1, 0, 0],
-        [0, 0, 1, 1, 0],
-        [0, 0, 0, 0, 1]])
-    adjacencyMat2 = np.array([
-        [1, 1, 0, 0, 0],
-        [1, 1, 1, 0, 1],
-        [0, 0, 1, 0, 0],
-        [0, 1, 0, 1, 0],
-        [0, 0, 0, 1, 1]])
-    adjacencyMat3 = np.array([
-        [1, 0, 0, 0, 0],
-        [0, 1, 1, 0, 1],
-        [0, 1, 1, 0, 0],
-        [0, 0, 0, 1, 1],
-        [0, 1, 0, 0, 1]])
-    adjacencyMatList = [adjacencyMat1, adjacencyMat2, adjacencyMat3]
-    # initialize a list of agents which are optimal control systems
-    listOcSystem = list()
-    for idx in range(adjacencyMatList[0].shape[0]):
-        listOcSystem.append(OcSystem(DynSystem=Unicycle(configDict), configDict=configDict))
-    # initialize multiple agents in a Cooperative Tuning Framework
-    MyMultiPDP = MultiPDP(listOcSystem, adjacencyMatList, graphPeriodicFlag=True, xlim = [-10, 10], ylim = [-10, 10])
+    # adjacencyMat1 = np.array([
+    #     [1, 1, 0, 0, 0],
+    #     [0, 1, 0, 0, 0],
+    #     [1, 0, 1, 0, 0],
+    #     [0, 0, 1, 1, 0],
+    #     [0, 0, 0, 0, 1]])
+    # adjacencyMat2 = np.array([
+    #     [1, 1, 0, 0, 0],
+    #     [1, 1, 1, 0, 1],
+    #     [0, 0, 1, 0, 0],
+    #     [0, 1, 0, 1, 0],
+    #     [0, 0, 0, 1, 1]])
+    # adjacencyMat3 = np.array([
+    #     [1, 0, 0, 0, 0],
+    #     [0, 1, 1, 0, 1],
+    #     [0, 1, 1, 0, 0],
+    #     [0, 0, 0, 1, 1],
+    #     [0, 1, 0, 0, 1]])
+    # adjacencyMatList = [adjacencyMat1, adjacencyMat2, adjacencyMat3]
 
-
-    # # for static graph
-    # adjacencyMat = np.array([
-    #     [1, 1, 0, 0],
-    #     [1, 1, 1, 1],
-    #     [0, 1, 1, 1],
-    #     [0, 1, 1, 1]])
     # # initialize a list of agents which are optimal control systems
     # listOcSystem = list()
-    # for idx in range(adjacencyMat.shape[0]):
+    # for idx in range(adjacencyMatList[0].shape[0]):
     #     listOcSystem.append(OcSystem(DynSystem=Unicycle(configDict), configDict=configDict))
     # # initialize multiple agents in a Cooperative Tuning Framework
-    # MyMultiPDP = MultiPDP(listOcSystem, adjacencyMat)
+    # MyMultiPDP = MultiPDP(listOcSystem, adjacencyMatList, graphPeriodicFlag=True, xlim = [-10, 10], ylim = [-10, 10])
+
+
+    # for static graph
+    adjacencyMat = np.array([
+        [1, 1, 0, 0],
+        [1, 1, 1, 1],
+        [0, 1, 1, 1],
+        [0, 1, 1, 1]])
+    # initialize a list of agents which are optimal control systems
+    listOcSystem = list()
+    for idx in range(adjacencyMat.shape[0]):
+        listOcSystem.append(OcSystem(DynSystem=Unicycle(configDict), configDict=configDict))
+    # initialize multiple agents in a Cooperative Tuning Framework
+    MyMultiPDP = MultiPDP(listOcSystem, adjacencyMat)
 
 
     # initial state and theta

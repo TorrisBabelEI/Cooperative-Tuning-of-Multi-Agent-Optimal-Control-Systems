@@ -22,7 +22,7 @@ class MultiPDP:
         self.iota = None  # Halfspace vector
         if not graphPeriodicFlag:
             self.adjacencyMat = adjacencyMat
-            self.generateMetropolisWeight(adjacencyMat)
+            # self.generateMetropolisWeight(adjacencyMat) # Test no consensus first
         else:
             self.adjacencyMatList = adjacencyMat
         self.listPDP = list()
@@ -108,8 +108,8 @@ class MultiPDP:
         for idx in range(self.numAgent):
             resultDictList.append(self.listOcSystem[idx].solve(initialStateAll[idx], initialThetaAll[idx]))
 
-        # acquire shepherding boundaries <------------------------------------------ Here
-        self.zeta, self.iota = self.defineHalfspaces(resultDictList, initialStateAll, initialThetaAll, legendFlag=False)
+        # acquire shepherding boundaries
+        self.defineHalfspaces(resultDictList, initialStateAll, initialThetaAll, legendFlag=False)
 
         thetaNowAll = initialThetaAll
         lossTraj = list()
@@ -128,9 +128,11 @@ class MultiPDP:
             lossNow, lossVecNow, gradientMatNow = self.computeGradient(initialStateAll, thetaNowAll)
             # exchange information and update theta
             if idxIter < idxIterMargin:
-                thetaNextAll = np.matmul(self.weightMat, thetaNowAll) - paraDict["stepSize"] * gradientMatNow
+                # thetaNextAll = np.matmul(self.weightMat, thetaNowAll) - paraDict["stepSize"] * gradientMatNow
+                thetaNextAll = thetaNowAll - paraDict["stepSize"] * gradientMatNow
             else:
-                thetaNextAll = np.matmul(self.weightMat, thetaNowAll)
+                # thetaNextAll = np.matmul(self.weightMat, thetaNowAll)
+                thetaNextAll = thetaNowAll
 
             lossTraj.append(lossNow)
             thetaAllTraj.append(thetaNowAll)
@@ -170,8 +172,9 @@ class MultiPDP:
             resultDict = self.listOcSystem[idx].solve(initialStateAll[idx], thetaNowAll[idx])
             lqrSystem = self.listPDP[idx].getLqrSystem(resultDict, thetaNowAll[idx])
             resultLqr = self.listPDP[idx].solveLqr(lqrSystem)
-
+            ########## ********** %%%%%%%%%% &&&&&&&&&& ********** @@@@@@@@@@
             lossVec[idx] = self.listPDP[idx].lossFun(resultDict["xi"], thetaNowAll[idx]).full()[0, 0]
+            # Need to pass on zeta and iota into loss, check all places that applies
             dLdXi = self.listPDP[idx].dLdXiFun(resultDict["xi"], thetaNowAll[idx])
             dXidTheta = np.vstack((np.concatenate(resultLqr["XTrajList"], axis=0),
                 np.concatenate(resultLqr["UTrajList"], axis=0)))
@@ -240,11 +243,15 @@ class MultiPDP:
 
 
     def defineHalfspaces(self, resultDictList, initialStateAll, thetaAll, legendFlag=False):
-        return halfspace_io(initial_traj = [resultDictList[idx]["xTraj"] for idx in range(self.numAgent)],
-                            initial_states = initialStateAll, 
-                            terminal_states = thetaAll,
-                            xlim = self.xlim, ylim = self.ylim, 
-                            numAgent = self.numAgent, legendFlag = legendFlag)
+        self.zeta, self.iota = halfspace_io(
+                                initial_traj = [resultDictList[idx]["xTraj"] for idx in range(self.numAgent)],
+                                initial_states = initialStateAll, 
+                                terminal_states = thetaAll,
+                                xlim = self.xlim, ylim = self.ylim, 
+                                numAgent = self.numAgent, legendFlag = legendFlag)
+        
+        for pdp in self.listPDP:
+            pdp.set_constraints(self.zeta, self.iota)
         
 
     def visualize(self, resultDictList, initialStateAll, thetaAll, blockFlag=True, legendFlag=True):
