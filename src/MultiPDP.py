@@ -11,8 +11,8 @@ class MultiPDP:
     numAgent: int  # number of agents
     optMethodStr: str  # a string for optimization method
 
-    def __init__(self, listOcSystem: list, adjacencyMat, graphPeriodicFlag=False, xlim = [-2.4, 2.4], ylim = [-1.8, 1.6]):
-        np.random.seed(114) # for reproducibility
+    def __init__(self, listOcSystem: list, adjacencyMat, graphPeriodicFlag=False,
+                 xlim = [-2.4, 2.4], ylim = [-1.8, 1.6], legendFlag=False):
 
         self.listOcSystem = listOcSystem
         self.numAgent = len(listOcSystem)
@@ -23,6 +23,7 @@ class MultiPDP:
         self.zeta = None  # Halfspace matrix (zeta^T y <= iota)
         self.iota = None  # Halfspace vector
         self.sigma = 1    # Softplus parameter
+        self.legendFlag = legendFlag
         if not graphPeriodicFlag:
             self.adjacencyMat = adjacencyMat
             # self.generateMetropolisWeight(adjacencyMat) # Test no consensus first
@@ -58,7 +59,7 @@ class MultiPDP:
         for idx in range(self.numAgent):
             self.weightMat[idx][idx] = weightMatSelf[idx]
 
-    def generateRandomInitialTheta(self, radius: float, center=[0.0, 0.0], headingRange=[-3.14, 3.14]):
+    def generateRandomInitialTheta(self, radius: float, center=[0.0, 0.0], headingRange=[-3.14, 3.14], seedNo = 114):
         """
         Randomly generate initial theta for multiple agents, where the position is randomly distributed on a circle with given radius and center.
 
@@ -70,6 +71,7 @@ class MultiPDP:
         Outputs:
             initialThetaAll: 2d numpy array, i-th row is the initial theta for agent-i
         """
+        np.random.seed(seedNo)
         initialThetaAll = np.zeros((self.numAgent, self.listOcSystem[0].DynSystem.dimParameters))
         for idx in range(self.numAgent):
             angle = np.random.uniform(-3.14, 3.14)
@@ -82,7 +84,8 @@ class MultiPDP:
             initialThetaAll[idx, :] = np.array([px, py, heading])
         return initialThetaAll
 
-    def generateRandomInitialState(self, initialThetaAll: np.array, radius: float):
+    def generateRandomInitialState(self, initialThetaAll: np.array, radius: float, seedNo = 114):
+        # Need to change this initial state generation function, which doesn't depend on the theta.
         """
         Randomly generate initial state for multiple agents, see more details in each dynamical system object.
 
@@ -95,7 +98,7 @@ class MultiPDP:
         """
         initialStateAll = np.zeros((self.numAgent, self.listOcSystem[0].DynSystem.dimStates))
         for idx in range(self.numAgent):
-            x0 = self.listOcSystem[0].DynSystem.generateRandomInitialState(initialThetaAll[idx, :], radius, center=initialStateAll[idx, 0:2])
+            x0 = self.listOcSystem[0].DynSystem.generateRandomInitialState(initialThetaAll[idx, :], radius, center=initialStateAll[idx, 0:2], seedNo=seedNo)
             initialStateAll[idx, :] = x0
         return initialStateAll
 
@@ -112,7 +115,7 @@ class MultiPDP:
             resultDictList.append(self.listOcSystem[idx].solve(initialStateAll[idx], initialThetaAll[idx]))
 
         # acquire shepherding boundaries
-        self.defineHalfspaces(resultDictList, initialStateAll, initialThetaAll, legendFlag=False)
+        self.defineHalfspaces(resultDictList, initialStateAll, initialThetaAll, legendFlag=self.legendFlag)
 
         thetaNowAll = initialThetaAll
         lossTraj = list()
@@ -163,7 +166,7 @@ class MultiPDP:
         self.plotLossTraj(lossTraj, thetaErrorTraj, blockFlag=False)
 
         # visualize
-        self.visualize(resultDictList, initialStateAll, thetaNowAll, legendFlag=False)
+        self.visualize(resultDictList, initialStateAll, thetaNowAll, legendFlag=self.legendFlag)
 
         plt.show()
 
@@ -175,9 +178,7 @@ class MultiPDP:
             resultDict = self.listOcSystem[idx].solve(initialStateAll[idx], thetaNowAll[idx])
             lqrSystem = self.listPDP[idx].getLqrSystem(resultDict, thetaNowAll[idx])
             resultLqr = self.listPDP[idx].solveLqr(lqrSystem)
-            ########## ********** %%%%%%%%%% &&&&&&&&&& ********** @@@@@@@@@@
             lossVec[idx] = self.listPDP[idx].lossFun(resultDict["xi"], thetaNowAll[idx]).full()[0, 0]
-            # Need to pass on zeta and iota into loss, check all places that applies
             dLdXi = self.listPDP[idx].dLdXiFun(resultDict["xi"], thetaNowAll[idx])
             dXidTheta = np.vstack((np.concatenate(resultLqr["XTrajList"], axis=0),
                 np.concatenate(resultLqr["UTrajList"], axis=0)))
@@ -230,7 +231,7 @@ class MultiPDP:
 
         # Boundary line (Ax = b)
         if abs(zeta2) > 1e-8:
-            x_vals = np.linspace(xmin, xmax, 3)
+            x_vals = np.linspace(xmin, xmax, 10)
             y_vals = (iota - zeta1 * x_vals) / zeta2
         else:
             x_vals = np.full(2, iota / zeta1)
@@ -240,8 +241,8 @@ class MultiPDP:
         # Shaded Area (Ax <= b)
         X, Y = np.meshgrid(np.linspace(xmin, xmax, 200),
                            np.linspace(ymin, ymax, 200))
-        Z = zeta1 * X + zeta2 * Y - iota
-        ax.contourf(X, Y, Z, levels=[-1e9, 0],
+        Region = (zeta1*X + zeta2*Y - iota <= 0.0)
+        ax.contourf(X, Y, Region, levels=[0.5, 1],
                     colors=['#ff6666'], alpha=0.3)
 
 
@@ -272,7 +273,7 @@ class MultiPDP:
 
         if self.iota is not None:
             for Ai, bi in zip(self.zeta, self.iota):
-                self.plot_halfspace(ax1, Ai, bi)
+                self.plotAHalfspace(ax1, Ai, bi)
 
         # ax1.set_title("Trajectory")
         ax1.set_xlabel("x [m]")
@@ -288,8 +289,8 @@ class MultiPDP:
             handles.append(plt.plot([],[], linestyle=None, color="blue", linewidth=2)[0])
             labels.append("Trajectory")
             if self.iota is not None:
-                handles.append(plt.plot([],[], linestyle=None, color="red", linewidth=2)[0])
-                labels.append("Shepherding Bondary [Infeasible Shaded]")
+                handles.append(plt.plot([],[], linestyle='-.', color="red", linewidth=2)[0])
+                labels.append("Shepherding Bondary")
             plt.legend(handles, labels, bbox_to_anchor=(1, 1), loc="upper left", framealpha=1)
 
         _, (ax21, ax22, ax23) = plt.subplots(3, 1)

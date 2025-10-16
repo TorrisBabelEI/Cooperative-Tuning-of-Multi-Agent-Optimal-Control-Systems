@@ -27,9 +27,11 @@ class halfspaceBuilder:
         self.saved = []
         self.current_pts = []
         self.fig, self.ax = plt.subplots(1, 1)
-        self.ax.set_title("Left click to pick: p1, p2, side. Right click to Undo. Close window to terminate.")
+        self.ax.set_title("Left click to pick: p1, p2, negative side. Right click to Undo. \n Close window to terminate.")
         self.ax.set_xlim(xlim)
         self.ax.set_ylim(ylim)
+        self.xlim = xlim
+        self.ylim = ylim
         self.ax.set_aspect('equal', 'box')
 
         self.numAgent = numAgent
@@ -50,8 +52,8 @@ class halfspaceBuilder:
             handles = [f(marker[i], colors[i]) for i in range(len(labels))]
             handles.append(plt.plot([],[], color="blue", linewidth=2)[0])
             labels.append("Trajectory")
-            handles.append(plt.plot([],[], linestyle=None, color="red", linewidth=2)[0])
-            labels.append("Shepherding Bondary [Infeasible Shaded]")
+            handles.append(plt.plot([],[], linestyle='-.', color="red", linewidth=2)[0])
+            labels.append("Shepherding Bondary")
             plt.legend(handles, labels, bbox_to_anchor=(1, 1), loc="upper left", framealpha=1)
 
         self.cid_click = self.fig.canvas.mpl_connect('button_press_event', self.on_click)
@@ -128,11 +130,11 @@ class halfspaceBuilder:
         return n, b
 
     def _plot_halfspace(self, Arow, b):
-        xmin, xmax = self.ax.get_xlim()
-        ymin, ymax = self.ax.get_ylim()
+        xmin, xmax = self.xlim[0], self.xlim[1]
+        ymin, ymax = self.ylim[0], self.ylim[1]
         a1, a2 = Arow
         if abs(a2) > 1e-8:
-            x_vals = np.linspace(xmin, xmax, 3)
+            x_vals = np.linspace(xmin, xmax, 10)
             y_vals = (b - a1*x_vals)/a2
         else:
             x_vals = np.full(2, b/a1)
@@ -144,8 +146,8 @@ class halfspaceBuilder:
         # shade Ax <= b region
         X, Y = np.meshgrid(np.linspace(xmin, xmax, 200),
                            np.linspace(ymin, ymax, 200))
-        Z = Arow[0]*X + Arow[1]*Y - b
-        fill = self.ax.contourf(X, Y, Z, levels=[-1e9, 0], colors=['#ff6666'], alpha=0.3)
+        Region = (Arow[0]*X + Arow[1]*Y - b <= 0.0)
+        fill = self.ax.contourf(X, Y, Region, levels=[0.5, 1], colors=['#ff6666'], alpha=0.3)
         self.fill_artists.append(fill)
         self.fig.canvas.draw_idle()
 
@@ -154,7 +156,7 @@ class halfspaceBuilder:
         b = np.array([b for _, b in self.saved]) if self.saved else np.zeros((0,))
         print("\n=== Decided Constraints ===")
         for i, (a, bi) in enumerate(zip(A, b)):
-            print(f"{i}: A = [{a[0]:.4f}, {a[1]:.4f}], b = {bi:.4f}")
+            print(f"{i}: zeta.T = [{a[0]:.4f}, {a[1]:.4f}], iota = {bi:.4f}")
         self.A, self.b = A, b
 
 def halfspaceIO(initial_traj, initial_states, terminal_states, xlim = [-2.4, 2.4], ylim = [-1.8, 1.6],

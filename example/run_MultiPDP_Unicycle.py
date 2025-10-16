@@ -57,12 +57,12 @@ if __name__ == '__main__':
     for idx in range(adjacencyMat.shape[0]):
         listOcSystem.append(OcSystem(DynSystem=Unicycle(configDict), configDict=configDict))
     # initialize multiple agents in a Cooperative Tuning Framework
-    MyMultiPDP = MultiPDP(listOcSystem, adjacencyMat, xlim = [-10, 10], ylim = [-10, 10])
+    MyMultiPDP = MultiPDP(listOcSystem, adjacencyMat, xlim = [-10, 10], ylim = [-10, 10], legendFlag=True)
 
 
     # initial state and theta
-    initialThetaAll = MyMultiPDP.generateRandomInitialTheta(radius=3, center=[0, 0], headingRange=[0.0])
-    initialStateAll = MyMultiPDP.generateRandomInitialState(initialThetaAll, radius=10)
+    initialThetaAll = MyMultiPDP.generateRandomInitialTheta(radius=10, center=[0, 0], headingRange=[0.0])
+    initialStateAll = MyMultiPDP.generateRandomInitialState(initialThetaAll, radius=3, center=[0, 0])
 
     print("initialStateAll:")
     print(initialStateAll)
