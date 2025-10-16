@@ -49,27 +49,27 @@ if __name__ == '__main__':
     # for static graph
     adjacencyMat = np.array([
         [1, 1, 0, 0],
-        [1, 1, 1, 1],
+        [1, 1, 1, 0],
         [0, 1, 1, 1],
-        [0, 1, 1, 1]])
+        [0, 0, 1, 1]])
     # initialize a list of agents which are optimal control systems
     listOcSystem = list()
     for idx in range(adjacencyMat.shape[0]):
         listOcSystem.append(OcSystem(DynSystem=Unicycle(configDict), configDict=configDict))
     # initialize multiple agents in a Cooperative Tuning Framework
-    MyMultiPDP = MultiPDP(listOcSystem, adjacencyMat, xlim = [-10, 10], ylim = [-10, 10], legendFlag=True)
+    MyMultiPDP = MultiPDP(listOcSystem, adjacencyMat, xlim = [-10, 10], ylim = [-10, 10], sigma = 0.5, legendFlag=True)
 
 
     # initial state and theta
     initialThetaAll = MyMultiPDP.generateRandomInitialTheta(radius=8, center=[0, 0], headingRange=[0.0])
-    initialStateAll = MyMultiPDP.generateRandomInitialState(initialThetaAll, radius=2)
+    initialStateAll = MyMultiPDP.generateRandomInitialState(initialThetaAll, radius=4)
 
     print("initialStateAll:")
     print(initialStateAll)
     print("initialThetaAll:")
     print(initialThetaAll)
 
-    paraDict = {"stepSize": 0.1, "maxIter": 100}
+    paraDict = {"stepSize": 0.01, "maxIter": 100}
 
     # run the algorithm
     MyMultiPDP.solve(initialStateAll, initialThetaAll, paraDict=paraDict)

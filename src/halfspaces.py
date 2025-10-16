@@ -15,7 +15,7 @@ class halfspaceBuilder:
     Left button: Decide points that determine halfspaces
         1st click: The first point for a line
         2nd click: The second point to decide a line
-        3rd click: Click to choose which side has negative values.
+        3rd click: Click to choose which side has active constraints.
     Right button: Undo
         + If the hyperplane is pending construction: Delete the last one point
         + Else: Delete the last halfspace we decided. 
@@ -27,7 +27,7 @@ class halfspaceBuilder:
         self.saved = []
         self.current_pts = []
         self.fig, self.ax = plt.subplots(1, 1)
-        self.ax.set_title("Left click to pick: p1, p2, negative side. Right click to Undo. \n Close window to terminate.")
+        self.ax.set_title("Left click to pick: p1, p2, active side. Right click to Undo. \n Close window to terminate.")
         self.ax.set_xlim(xlim)
         self.ax.set_ylim(ylim)
         self.xlim = xlim

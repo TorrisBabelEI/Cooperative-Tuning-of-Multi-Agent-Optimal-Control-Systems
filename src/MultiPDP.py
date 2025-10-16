@@ -12,7 +12,7 @@ class MultiPDP:
     optMethodStr: str  # a string for optimization method
 
     def __init__(self, listOcSystem: list, adjacencyMat, graphPeriodicFlag=False,
-                 xlim = [-2.4, 2.4], ylim = [-1.8, 1.6], legendFlag=False):
+                 xlim = [-2.4, 2.4], ylim = [-1.8, 1.6], sigma = 1, legendFlag=False):
 
         self.listOcSystem = listOcSystem
         self.numAgent = len(listOcSystem)
@@ -22,11 +22,11 @@ class MultiPDP:
         self.ylim = ylim
         self.zeta = None  # Halfspace matrix (zeta^T y <= iota)
         self.iota = None  # Halfspace vector
-        self.sigma = 1    # Softplus parameter
+        self.sigma = sigma    # Softplus parameter
         self.legendFlag = legendFlag
         if not graphPeriodicFlag:
             self.adjacencyMat = adjacencyMat
-            # self.generateMetropolisWeight(adjacencyMat) # Test no consensus first
+            self.generateMetropolisWeight(adjacencyMat)
         else:
             self.adjacencyMatList = adjacencyMat
         self.listPDP = list()
@@ -134,11 +134,11 @@ class MultiPDP:
             lossNow, lossVecNow, gradientMatNow = self.computeGradient(initialStateAll, thetaNowAll)
             # exchange information and update theta
             if idxIter < idxIterMargin:
-                # thetaNextAll = np.matmul(self.weightMat, thetaNowAll) - paraDict["stepSize"] * gradientMatNow
-                thetaNextAll = thetaNowAll - paraDict["stepSize"] * gradientMatNow
+                thetaNextAll = np.matmul(self.weightMat, thetaNowAll) - paraDict["stepSize"] * gradientMatNow
+                # thetaNextAll = thetaNowAll - paraDict["stepSize"] * gradientMatNow
             else:
-                # thetaNextAll = np.matmul(self.weightMat, thetaNowAll)
-                thetaNextAll = thetaNowAll
+                thetaNextAll = np.matmul(self.weightMat, thetaNowAll)
+                # thetaNextAll = thetaNowAll
 
             lossTraj.append(lossNow)
             thetaAllTraj.append(thetaNowAll)
@@ -161,6 +161,9 @@ class MultiPDP:
             lossVec[idx] = self.listPDP[idx].lossFun(resultDictList[idx]["xi"], thetaNowAll[idx]).full()[0, 0]
 
         print('Iter:', idxIter + 1, ' loss:', lossVec.sum())
+
+        for idx in range(self.numAgent):
+            print(f'Final Trajectory of Agent {idx}: \n', resultDictList[idx]["xTraj"])
 
         # plot the loss
         self.plotLossTraj(lossTraj, thetaErrorTraj, blockFlag=False)
@@ -188,7 +191,7 @@ class MultiPDP:
             # this is full derivative
             gradientMat[idx, :] = np.array(np.dot(dLdXi, dXidTheta) + dLdTheta).flatten()
 
-        return lossVec.sum(), lossVec, gradientMat
+        return lossVec.sum()/self.numAgent, lossVec, gradientMat
 
     def computeThetaError(self, thetaNowAll):
         error = 0.0
@@ -278,12 +281,15 @@ class MultiPDP:
         # ax1.set_title("Trajectory")
         ax1.set_xlabel("x [m]")
         ax1.set_ylabel("y [m]")
-        ax1.axis("equal")
+        ax1.set_aspect("equal", adjustable="box")
+        ax1.set_xlim(self.xlim)
+        ax1.set_ylim(self.ylim)
+
         # plot legends
         if legendFlag:
             labels = ["Start", "Goal"]
             marker = ["o", "^"]
-            colors = ["blue", "red"]
+            colors = ["magenta", "green"]
             f = lambda m,c: plt.plot([], [], marker=m, color=c, ls="none")[0]
             handles = [f(marker[i], colors[i]) for i in range(len(labels))]
             handles.append(plt.plot([],[], linestyle=None, color="blue", linewidth=2)[0])
