@@ -134,7 +134,7 @@ class halfspaceBuilder:
         ymin, ymax = self.ylim[0], self.ylim[1]
         a1, a2 = Arow
         if abs(a2) > 1e-8:
-            x_vals = np.linspace(xmin, xmax, 10)
+            x_vals = np.linspace(xmin, xmax, 3)
             y_vals = (b - a1*x_vals)/a2
         else:
             x_vals = np.full(2, b/a1)
@@ -146,7 +146,9 @@ class halfspaceBuilder:
         # shade Ax <= b region
         X, Y = np.meshgrid(np.linspace(xmin, xmax, 200),
                            np.linspace(ymin, ymax, 200))
-        Region = (Arow[0]*X + Arow[1]*Y - b <= 0.0)
+        Z = Arow[0]*X + Arow[1]*Y - b
+        print(f"Z range: {Z.min():.3f} to {Z.max():.3f}")
+        Region = ( Z <= 0 )
         fill = self.ax.contourf(X, Y, Region, levels=[0.5, 1], colors=['#ff6666'], alpha=0.3)
         self.fill_artists.append(fill)
         self.fig.canvas.draw_idle()

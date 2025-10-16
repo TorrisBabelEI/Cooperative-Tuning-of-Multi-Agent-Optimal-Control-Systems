@@ -59,7 +59,7 @@ class MultiPDP:
         for idx in range(self.numAgent):
             self.weightMat[idx][idx] = weightMatSelf[idx]
 
-    def generateRandomInitialTheta(self, radius: float, center=[0.0, 0.0], headingRange=[-3.14, 3.14], seedNo = 114):
+    def generateRandomInitialTheta(self, radius: float, center=[0.0, 0.0], headingRange=[-3.14, 3.14]):
         """
         Randomly generate initial theta for multiple agents, where the position is randomly distributed on a circle with given radius and center.
 
@@ -71,7 +71,6 @@ class MultiPDP:
         Outputs:
             initialThetaAll: 2d numpy array, i-th row is the initial theta for agent-i
         """
-        np.random.seed(seedNo)
         initialThetaAll = np.zeros((self.numAgent, self.listOcSystem[0].DynSystem.dimParameters))
         for idx in range(self.numAgent):
             angle = np.random.uniform(-3.14, 3.14)
@@ -98,7 +97,7 @@ class MultiPDP:
         """
         initialStateAll = np.zeros((self.numAgent, self.listOcSystem[0].DynSystem.dimStates))
         for idx in range(self.numAgent):
-            x0 = self.listOcSystem[0].DynSystem.generateRandomInitialState(initialThetaAll[idx, :], radius, center=initialStateAll[idx, 0:2], seedNo=seedNo)
+            x0 = self.listOcSystem[0].DynSystem.generateRandomInitialState(initialThetaAll[idx, :], radius, center=initialStateAll[idx, 0:2])
             initialStateAll[idx, :] = x0
         return initialStateAll
 
