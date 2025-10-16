@@ -132,7 +132,7 @@ class halfspaceBuilder:
         ymin, ymax = self.ax.get_ylim()
         a1, a2 = Arow
         if abs(a2) > 1e-8:
-            x_vals = np.linspace(xmin, xmax, 200)
+            x_vals = np.linspace(xmin, xmax, 3)
             y_vals = (b - a1*x_vals)/a2
         else:
             x_vals = np.full(2, b/a1)
@@ -142,9 +142,10 @@ class halfspaceBuilder:
         self.line_artists.append(line)
 
         # shade Ax <= b region
-        X, Y = np.meshgrid(np.linspace(xmin, xmax, 200), np.linspace(ymin, ymax, 200))
+        X, Y = np.meshgrid(np.linspace(xmin, xmax, 200),
+                           np.linspace(ymin, ymax, 200))
         Z = Arow[0]*X + Arow[1]*Y - b
-        fill = self.ax.contourf(X, Y, Z, levels=[-1e9, 0], colors=['#ff6666'], alpha=0.5)
+        fill = self.ax.contourf(X, Y, Z, levels=[-1e9, 0], colors=['#ff6666'], alpha=0.3)
         self.fill_artists.append(fill)
         self.fig.canvas.draw_idle()
 
@@ -156,7 +157,8 @@ class halfspaceBuilder:
             print(f"{i}: A = [{a[0]:.4f}, {a[1]:.4f}], b = {bi:.4f}")
         self.A, self.b = A, b
 
-def halfspace_io(initial_traj, initial_state, xlim = [-2.4, 2.4], ylim = [-1.8, 1.6], numAgent = 1):
-    builder = halfspaceBuilder(initial_traj, initial_state, xlim, ylim, numAgent)
+def halfspaceIO(initial_traj, initial_states, terminal_states, xlim = [-2.4, 2.4], ylim = [-1.8, 1.6],
+                 numAgent = 1, legendFlag = False):
+    builder = halfspaceBuilder(initial_traj, initial_states, terminal_states, xlim, ylim, numAgent, legendFlag)
     plt.show()
     return builder.A, builder.b

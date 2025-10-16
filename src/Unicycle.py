@@ -122,7 +122,7 @@ class Unicycle:
             posStep = casadi.vertcat(xAll[self.dimStates * step],
                                      xAll[self.dimStates * step + 1])   # Extract positions at each step
             # Extract Positions
-            shepherd_loss += casadi.sum1(self.softplus(casadi.mtimes(zeta, posStep) - iota), sigma)
+            shepherd_loss += casadi.sum1(self.softplus(casadi.mtimes(zeta, posStep) - iota, sigma))
         return shepherd_loss
     
     def softplus(self, lossStep, sigma):

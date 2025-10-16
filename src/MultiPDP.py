@@ -4,7 +4,7 @@ import numpy as np
 import matplotlib.pyplot as plt
 from matplotlib.ticker import MaxNLocator
 from PDP import PDP
-from halfspaces import halfspace_io
+from Halfspaces import halfspaceIO
 
 
 class MultiPDP:
@@ -12,6 +12,8 @@ class MultiPDP:
     optMethodStr: str  # a string for optimization method
 
     def __init__(self, listOcSystem: list, adjacencyMat, graphPeriodicFlag=False, xlim = [-2.4, 2.4], ylim = [-1.8, 1.6]):
+        np.random.seed(114) # for reproducibility
+
         self.listOcSystem = listOcSystem
         self.numAgent = len(listOcSystem)
         self.configDict = listOcSystem[0].configDict
@@ -20,6 +22,7 @@ class MultiPDP:
         self.ylim = ylim
         self.zeta = None  # Halfspace matrix (zeta^T y <= iota)
         self.iota = None  # Halfspace vector
+        self.sigma = 1    # Softplus parameter
         if not graphPeriodicFlag:
             self.adjacencyMat = adjacencyMat
             # self.generateMetropolisWeight(adjacencyMat) # Test no consensus first
@@ -227,7 +230,7 @@ class MultiPDP:
 
         # Boundary line (Ax = b)
         if abs(zeta2) > 1e-8:
-            x_vals = np.linspace(xmin, xmax, 5)
+            x_vals = np.linspace(xmin, xmax, 3)
             y_vals = (iota - zeta1 * x_vals) / zeta2
         else:
             x_vals = np.full(2, iota / zeta1)
@@ -239,11 +242,11 @@ class MultiPDP:
                            np.linspace(ymin, ymax, 200))
         Z = zeta1 * X + zeta2 * Y - iota
         ax.contourf(X, Y, Z, levels=[-1e9, 0],
-                    colors=['#ff6666'], alpha=0.5)
+                    colors=['#ff6666'], alpha=0.3)
 
 
     def defineHalfspaces(self, resultDictList, initialStateAll, thetaAll, legendFlag=False):
-        self.zeta, self.iota = halfspace_io(
+        self.zeta, self.iota = halfspaceIO(
                                 initial_traj = [resultDictList[idx]["xTraj"] for idx in range(self.numAgent)],
                                 initial_states = initialStateAll, 
                                 terminal_states = thetaAll,
@@ -251,7 +254,7 @@ class MultiPDP:
                                 numAgent = self.numAgent, legendFlag = legendFlag)
         
         for pdp in self.listPDP:
-            pdp.set_constraints(self.zeta, self.iota)
+            pdp.setConstraints(self.zeta, self.iota, self.sigma)   # See the function in PDP.py for details
         
 
     def visualize(self, resultDictList, initialStateAll, thetaAll, blockFlag=True, legendFlag=True):
