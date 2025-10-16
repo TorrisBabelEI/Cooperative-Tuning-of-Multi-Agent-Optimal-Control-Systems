@@ -125,8 +125,9 @@ class halfspaceBuilder:
         if np.dot(n, side_pt) > b:
             n = -n
             b = -b
-        n /= np.linalg.norm(n)
-        b /= np.linalg.norm(n)
+        norm_n = np.linalg.norm(n)
+        n /= norm_n
+        b /= norm_n
         return n, b
 
     def _plot_halfspace(self, Arow, b):
