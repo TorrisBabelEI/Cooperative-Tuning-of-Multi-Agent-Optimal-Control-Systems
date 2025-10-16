@@ -235,7 +235,7 @@ class MultiPDP:
         else:
             x_vals = np.full(2, iota / zeta1)
             y_vals = np.array([ymin, ymax])
-        ax.plot(x_vals, y_vals, 'r-', lw=2)
+        ax.plot(x_vals, y_vals, 'r-.', lw=2)
 
         # Shaded Area (Ax <= b)
         X, Y = np.meshgrid(np.linspace(xmin, xmax, 200),

@@ -254,7 +254,7 @@ class Unicycle:
         py = center[1] + radius * round(math.sin(a), 2)
 
         dx = px - theta[0]
-        dy = py - theta[0]
+        dy = py - theta[1]
         epsilon = 0.1
         if abs(dy) < epsilon:
             if dx < epsilon:

@@ -141,14 +141,13 @@ class halfspaceBuilder:
             x_vals = np.full(2, b/a1)
             y_vals = np.array([ymin, ymax])
 
-        line = self.ax.plot(x_vals, y_vals, 'r-', lw=2)[0]
+        line = self.ax.plot(x_vals, y_vals, 'r-.', lw=2)[0]
         self.line_artists.append(line)
 
         # shade Ax <= b region
         X, Y = np.meshgrid(np.linspace(xmin, xmax, 200),
                            np.linspace(ymin, ymax, 200))
         Z = Arow[0]*X + Arow[1]*Y - b
-        print(f"Z range: {Z.min():.3f} to {Z.max():.3f}")
         Region = ( Z <= 0 )
         fill = self.ax.contourf(X, Y, Region, levels=[0.5, 1], colors=['#ff6666'], alpha=0.3)
         self.fill_artists.append(fill)
