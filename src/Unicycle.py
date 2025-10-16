@@ -113,17 +113,17 @@ class Unicycle:
         # return loss
 
         # Construct out-of-shepherding-boundary loss here
-        if zeta is None or iota is None:
-            return 0.0
+        loss = 0.0
+        if iota is not None:    # Calculate shepherding boundary loss
+            for step in range(self.horizonSteps + 1):
+                posStep = casadi.vertcat(xAll[self.dimStates * step],
+                                        xAll[self.dimStates * step + 1])   # Extract positions at each step
+                # Extract Positions
+                loss += casadi.sum1(self.softplus(casadi.mtimes(zeta, posStep) - iota, sigma))
 
-        shepherd_loss = 0.0
+        # Need to add edge agreement loss later
 
-        for step in range(self.horizonSteps + 1):
-            posStep = casadi.vertcat(xAll[self.dimStates * step],
-                                     xAll[self.dimStates * step + 1])   # Extract positions at each step
-            # Extract Positions
-            shepherd_loss += casadi.sum1(self.softplus(casadi.mtimes(zeta, posStep) - iota, sigma))
-        return shepherd_loss
+        return loss
     
     def softplus(self, lossStep, sigma):
         """
