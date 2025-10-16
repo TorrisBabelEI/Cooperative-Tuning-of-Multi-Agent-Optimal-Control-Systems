@@ -235,7 +235,7 @@ class Unicycle:
         normCheck = np.linalg.norm(eqCon)
         print("equality constraints norm (expected to be near zero): ", normCheck)
 
-    def generateRandomInitialState(self, theta, radius: float, center=[0.0, 0.0]):
+    def generateRandomInitialState(self, theta, radius: float, center=[0.0, 0.0], seedNo = 514):
         """
         Randomly generate initial state for a unicycle, where the position is randomly generated on a circle with given radius and center,
         and heading points at the desired position theta + variance.
@@ -248,7 +248,8 @@ class Unicycle:
         Outputs:
             initialState: 1d numpy array for the initial state
         """
-        
+        np.random.seed(seedNo)
+
         a = np.random.uniform(-3.14, 3.14)
         px = center[0] + radius * round(math.cos(a), 2)
         py = center[1] + radius * round(math.sin(a), 2)

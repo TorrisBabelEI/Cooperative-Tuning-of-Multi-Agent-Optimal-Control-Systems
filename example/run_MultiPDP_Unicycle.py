@@ -61,8 +61,8 @@ if __name__ == '__main__':
 
 
     # initial state and theta
-    initialThetaAll = MyMultiPDP.generateRandomInitialTheta(radius=7, center=[0, 0], headingRange=[0.0])
-    initialStateAll = MyMultiPDP.generateRandomInitialState(initialThetaAll, radius=3)
+    initialThetaAll = MyMultiPDP.generateRandomInitialTheta(radius=8, center=[0, 0], headingRange=[0.0], seedNo = 114)
+    initialStateAll = MyMultiPDP.generateRandomInitialState(initialThetaAll, radius=8, seedNo = 514)
 
     print("initialStateAll:")
     print(initialStateAll)
