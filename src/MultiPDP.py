@@ -148,7 +148,7 @@ class MultiPDP:
             if idxIter >= idxIterMargin:
                 gradientNorm = 0.0
 
-            printStr = 'Iter:' + str(idxIter) + ', loss:' + str(lossNow) + ', grad norm:' + str(gradientNorm) + ', theta error:' + str(thetaErrorTraj[idxIter])
+            printStr = 'Iter:' + str(idxIter) + ', mean loss:' + str(lossNow) + ', grad norm:' + str(gradientNorm) + ', theta error:' + str(thetaErrorTraj[idxIter])
             print(printStr)
 
             if (gradientNorm <= 0.01) and (thetaErrorTraj[idxIter] <= 0.001):

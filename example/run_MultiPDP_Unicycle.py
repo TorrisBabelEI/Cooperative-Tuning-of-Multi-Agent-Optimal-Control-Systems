@@ -59,6 +59,7 @@ if __name__ == '__main__':
     # initialize multiple agents in a Cooperative Tuning Framework
     MyMultiPDP = MultiPDP(listOcSystem, adjacencyMat, xlim = [-10, 10], ylim = [-10, 10],
                           sigma = 0.5, alpha = None, legendFlag=True)
+    # alpha = None: use softplus; alpha is a non-negative number: use leaky softplus
 
 
     # initial state and theta
@@ -70,7 +71,7 @@ if __name__ == '__main__':
     print("initialThetaAll:")
     print(initialThetaAll)
 
-    paraDict = {"stepSize": 0.01, "maxIter": 100}
+    paraDict = {"stepSize": 0.1, "maxIter": 100}
 
     # run the algorithm
     MyMultiPDP.solve(initialStateAll, initialThetaAll, paraDict=paraDict)

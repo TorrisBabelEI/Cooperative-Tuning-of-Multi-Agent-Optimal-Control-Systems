@@ -146,6 +146,8 @@ class Unicycle:
         """
         A leaky version of the softplus function
         """
+        if alpha < 0:
+            raise ValueError("alpha should be a non-negative number.")
         return alpha*lossStep + (1-alpha)*self.softplus(lossStep, sigma)
 
     def plotArrow(self, stateNow):
