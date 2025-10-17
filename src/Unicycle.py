@@ -101,7 +101,7 @@ class Unicycle:
             dynCons = casadi.vertcat(dynCons, currentCons)
         return dynCons
 
-    def _lossFun(self, xAll, uAll, theta, zeta = None, iota = None, sigma = 1):
+    def _lossFun(self, xAll, uAll, theta, zeta = None, iota = None, sigma = 1, alpha = None):
         # xTerminal = xAll[self.dimStatesAll-self.dimStates:]
 
         # Heading error was not used in the demo
@@ -114,12 +114,20 @@ class Unicycle:
 
         # Construct out-of-shepherding-boundary loss here
         loss = 0.0
-        if iota is not None:    # Calculate shepherding boundary loss
-            for step in range(self.horizonSteps + 1):
-                posStep = casadi.vertcat(xAll[self.dimStates * step],
-                                        xAll[self.dimStates * step + 1])   # Extract positions at each step
-                # Extract Positions
-                loss += casadi.sum1(self.softplus(casadi.mtimes(zeta, posStep) - iota, sigma))
+        if alpha is None:           # Use softplus
+            print(f'Softplus function with sigma = {sigma}.')
+            if iota is not None:
+                for step in range(self.horizonSteps + 1):
+                    posStep = casadi.vertcat(xAll[self.dimStates * step],
+                                            xAll[self.dimStates * step + 1])   # Extract positions at each step
+                    loss += casadi.sum1(self.softplus(casadi.mtimes(zeta, posStep) - iota, sigma))
+        else:                       # Use leaky softplus
+            print(f'Leaky softplus function with sigma = {sigma}, alpha = {alpha}.')
+            if iota is not None:
+                for step in range(self.horizonSteps + 1):
+                    posStep = casadi.vertcat(xAll[self.dimStates * step],
+                                            xAll[self.dimStates * step + 1])
+                    loss += casadi.sum1(self.leakySoftplus(casadi.mtimes(zeta, posStep) - iota, sigma, alpha))
 
         # Need to add edge agreement loss later
 
@@ -133,6 +141,12 @@ class Unicycle:
         sigma is used to adjust the smoothness at the turning corner of 0
         """
         return sigma*casadi.log(1 + casadi.exp(lossStep/sigma))
+    
+    def leakySoftplus(self, lossStep, sigma, alpha):
+        """
+        A leaky version of the softplus function
+        """
+        return alpha*lossStep + (1-alpha)*self.softplus(lossStep, sigma)
 
     def plotArrow(self, stateNow):
         magnitude = 0.1

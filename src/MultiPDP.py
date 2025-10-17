@@ -12,7 +12,7 @@ class MultiPDP:
     optMethodStr: str  # a string for optimization method
 
     def __init__(self, listOcSystem: list, adjacencyMat, graphPeriodicFlag=False,
-                 xlim = [-2.4, 2.4], ylim = [-1.8, 1.6], sigma = 1, legendFlag=False):
+                 xlim = [-2.4, 2.4], ylim = [-1.8, 1.6], sigma = 1, alpha = None, legendFlag=False):
 
         self.listOcSystem = listOcSystem
         self.numAgent = len(listOcSystem)
@@ -23,6 +23,7 @@ class MultiPDP:
         self.zeta = None  # Halfspace matrix (zeta^T y <= iota)
         self.iota = None  # Halfspace vector
         self.sigma = sigma    # Softplus parameter
+        self.alpha = alpha    # Leaky parameter for softplus function
         self.legendFlag = legendFlag
         if not graphPeriodicFlag:
             self.adjacencyMat = adjacencyMat
@@ -258,7 +259,7 @@ class MultiPDP:
                                 numAgent = self.numAgent, legendFlag = legendFlag)
         
         for pdp in self.listPDP:
-            pdp.setConstraints(self.zeta, self.iota, self.sigma)   # See the function in PDP.py for details
+            pdp.setConstraints(self.zeta, self.iota, self.sigma, self.alpha)   # See the function in PDP.py for details
         
 
     def visualize(self, resultDictList, initialStateAll, thetaAll, blockFlag=True, legendFlag=True):

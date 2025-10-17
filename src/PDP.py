@@ -23,7 +23,7 @@ class PDP:
         self.matI = np.eye(self.DynSystem.dimStates)  # identity matrix
         self.diffPMP()
 
-    def diffPMP(self, zeta = None, iota = None, sigma = 1):
+    def diffPMP(self, zeta = None, iota = None, sigma = 1, alpha = None):
         # define the Hamiltonian function
         self.costates = casadi.SX.sym("lambda", self.DynSystem.dimStates)
         self.theta = self.DynSystem.theta
@@ -34,7 +34,7 @@ class PDP:
         self.terminalHamilton = self.DynSystem._terminalCostFun(self.DynSystem.states, self.theta)
 
         # loss function
-        self.loss = self.DynSystem._lossFun(self.xXi, self.uXi, self.theta, zeta, iota, sigma)
+        self.loss = self.DynSystem._lossFun(self.xXi, self.uXi, self.theta, zeta, iota, sigma, alpha)
         # We don't have zeta and sigma yet, let it be None for now
         self.dLdXi = casadi.jacobian(self.loss, self.xi)
         self.dLdTheta = casadi.jacobian(self.loss, self.theta) # partial derivative
@@ -94,10 +94,10 @@ class PDP:
         self.ddhdxdxFun = casadi.Function('ddhdxdxFun', [self.DynSystem.states, self.theta], [self.ddhdxdx])
         self.ddhdxdeFun = casadi.Function('ddhdxdeFun', [self.DynSystem.states, self.theta], [self.ddhdxde])
 
-    def setConstraints(self, zeta, iota, sigma = 1):
-        zeta, iota, sigma = casadi.DM(zeta), casadi.DM(iota), casadi.DM(sigma)
+    def setConstraints(self, zeta, iota, sigma = 1, alpha = None):
+        zeta, iota = casadi.DM(zeta), casadi.DM(iota)
         # Update loss with acquired zeta and iota
-        self.diffPMP(zeta, iota, sigma)
+        self.diffPMP(zeta, iota, sigma, alpha)
 
     def solve(self, initialState, thetaInit, paraDict: dict):
         # load the optimization function based on paraDict
