@@ -60,6 +60,27 @@ class MultiPDP:
         for idx in range(self.numAgent):
             self.weightMat[idx][idx] = weightMatSelf[idx]
 
+    def generateIncidenceMatrix(self, adjacencyMat):
+        # Generate incidence matrix based on an undirected graoh
+        symmetric_flag = np.array_equal(adjacencyMat, adjacencyMat.T)
+        if not symmetric_flag:
+            raise ValueError('Invalid Adjacency Matrix.')
+        
+        edges = []
+        for i in range(adjacencyMat.shape[0]):
+            for j in range(i + 1, adjacencyMat.shape[0]):
+                if adjacencyMat[i, j] != 0:
+                    edges.append((i, j))
+
+        incidenceMat = np.zeros((adjacencyMat.shape[0], len(edges)))
+
+        for k, (i, j) in enumerate(edges):
+            incidenceMat[i, k] = 1
+            incidenceMat[j, k] = -1
+
+        return incidenceMat, edges
+
+
     def generateRandomInitialTheta(self, radius: float, center=[0.0, 0.0], headingRange=[-3.14, 3.14]):
         """
         Randomly generate initial theta for multiple agents, where the position is randomly distributed on a circle with given radius and center.

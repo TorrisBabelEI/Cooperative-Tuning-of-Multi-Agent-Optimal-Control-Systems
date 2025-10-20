@@ -48,10 +48,11 @@ if __name__ == '__main__':
 
     # for static graph
     adjacencyMat = np.array([
-        [1, 1, 0, 0],
-        [1, 1, 1, 0],
-        [0, 1, 1, 1],
-        [0, 0, 1, 1]])
+        [1, 1, 1, 1, 1],
+        [1, 1, 0, 1, 0],
+        [1, 0, 1, 0, 1],
+        [1, 1, 0, 1, 1],
+        [1, 0, 1, 1, 1]])
     # initialize a list of agents which are optimal control systems
     listOcSystem = list()
     for idx in range(adjacencyMat.shape[0]):
