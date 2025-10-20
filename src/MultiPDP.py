@@ -61,7 +61,7 @@ class MultiPDP:
             self.weightMat[idx][idx] = weightMatSelf[idx]
 
     def generateIncidenceMatrix(self, adjacencyMat):
-        # Generate incidence matrix based on an undirected graoh
+        # Generate incidence matrix based on the adjacency matrix of an undirected graoh
         symmetric_flag = np.array_equal(adjacencyMat, adjacencyMat.T)
         if not symmetric_flag:
             raise ValueError('Invalid Adjacency Matrix.')
@@ -79,6 +79,16 @@ class MultiPDP:
             incidenceMat[j, k] = -1
 
         return incidenceMat, edges
+    
+    def generateRegularEdgeAgreement(self, adjacencyMat, radius = 1.0, rotation = 0.0):
+        # Generate relative state variables difference for edge agreement 
+        incidenceMat, edges = self.generateIncidenceMatrix(adjacencyMat)
+        angles = np.linspace(0, 2*np.pi, adjacencyMat.shape[0], endpoint=False) + rotation
+        x = radius * np.cos(angles)
+        y = radius * np.sin(angles)
+        pos = np.vstack((x, y))
+
+        return pos @ incidenceMat
 
 
     def generateRandomInitialTheta(self, radius: float, center=[0.0, 0.0], headingRange=[-3.14, 3.14]):

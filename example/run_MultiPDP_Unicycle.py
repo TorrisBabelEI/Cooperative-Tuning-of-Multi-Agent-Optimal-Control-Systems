@@ -61,6 +61,7 @@ if __name__ == '__main__':
     MyMultiPDP = MultiPDP(listOcSystem, adjacencyMat, xlim = [-10, 10], ylim = [-10, 10],
                           sigma = 0.5, alpha = None, legendFlag=True)
     # alpha = None: use softplus; alpha is a non-negative number: use leaky softplus
+    # rho: in [0, 1], trading-off between shepherding and edge agreement
 
 
     # initial state and theta
