@@ -102,7 +102,7 @@ class Unicycle:
         return dynCons
 
     def _lossFun(self, xAll, uAll, theta, zeta = None, iota = None, sigma = 1, alpha = None,
-                 rho = 1.0, incidenceMat = None, relativePosition = None):
+                 rho = 1.0, incidenceMat = None, edges = None, relativePosition = None):
         # xTerminal = xAll[self.dimStatesAll-self.dimStates:]
 
         # Heading error was not used in the demo
@@ -133,6 +133,7 @@ class Unicycle:
         
         if incidenceMat is not None and rho < 1.0:
             # Construct edge agreement loss here
+            # Current issue: Only know one agent's position, need to know the connected agents' positions
             for step in range(self.horizonSteps + 1):
                 posStep = casadi.vertcat(xAll[self.dimStates * step],
                                          xAll[self.dimStates * step + 1])

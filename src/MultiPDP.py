@@ -160,7 +160,7 @@ class MultiPDP:
         if not self.graphPeriodicFlag:
             for pdp in self.listPDP:
                     pdp.setConstraints(self.zeta, self.iota, self.sigma, self.alpha,
-                                       self.rho, self.incidenceMat, self.relativePosition)
+                                       self.rho, self.incidenceMat, self.edges, self.relativePosition)
                     # See the function in PDP.py for details
 
         thetaNowAll = initialThetaAll
@@ -176,7 +176,7 @@ class MultiPDP:
                 self.generateRegularEdgeAgreement(self.adjacencyMatList[idxGraph])
                 for pdp in self.listPDP:
                     pdp.setConstraints(self.zeta, self.iota, self.sigma, self.alpha,
-                                       self.rho, self.incidenceMat, self.relativePosition)
+                                       self.rho, self.incidenceMat, self.edges, self.relativePosition)
 
             # error among theta
             thetaErrorTraj.append(self.computeThetaError(thetaNowAll))
