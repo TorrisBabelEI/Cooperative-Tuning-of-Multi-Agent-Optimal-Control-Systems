@@ -13,7 +13,7 @@ class MultiPDP:
 
     def __init__(self, listOcSystem: list, adjacencyMat, graphPeriodicFlag=False,
                  xlim = [-2.4, 2.4], ylim = [-1.8, 1.6], sigma = 1, alpha = None,
-                 rho = 0.5, legendFlag=False):
+                 rho = 1.0, legendFlag=False):
 
         self.listOcSystem = listOcSystem
         self.numAgent = len(listOcSystem)
@@ -35,7 +35,7 @@ class MultiPDP:
         self.relativePosition = []
         if not graphPeriodicFlag:
             self.adjacencyMat = adjacencyMat
-            self.generateMetropolisWeight(adjacencyMat)
+            # self.generateMetropolisWeight(adjacencyMat)
             self.generateRegularEdgeAgreement(adjacencyMat)
         else:
             self.adjacencyMatList = adjacencyMat
@@ -172,7 +172,7 @@ class MultiPDP:
             # for dynamic periodic graph
             if self.graphPeriodicFlag:
                 idxGraph = int(idxIter % len(self.adjacencyMatList))
-                self.generateMetropolisWeight(self.adjacencyMatList[idxGraph])
+                # self.generateMetropolisWeight(self.adjacencyMatList[idxGraph])
                 self.generateRegularEdgeAgreement(self.adjacencyMatList[idxGraph])
                 for pdp in self.listPDP:
                     pdp.setConstraints(self.zeta, self.iota, self.sigma, self.alpha,
@@ -184,11 +184,11 @@ class MultiPDP:
             lossNow, lossVecNow, gradientMatNow = self.computeGradient(initialStateAll, thetaNowAll)
             # exchange information and update theta
             if idxIter < idxIterMargin:
-                thetaNextAll = np.matmul(self.weightMat, thetaNowAll) - paraDict["stepSize"] * gradientMatNow
-                # thetaNextAll = thetaNowAll - paraDict["stepSize"] * gradientMatNow
+                # thetaNextAll = np.matmul(self.weightMat, thetaNowAll) - paraDict["stepSize"] * gradientMatNow
+                thetaNextAll = thetaNowAll - paraDict["stepSize"] * gradientMatNow
             else:
-                thetaNextAll = np.matmul(self.weightMat, thetaNowAll)
-                # thetaNextAll = thetaNowAll
+                # thetaNextAll = np.matmul(self.weightMat, thetaNowAll)
+                thetaNextAll = thetaNowAll
 
             lossTraj.append(lossNow)
             thetaAllTraj.append(thetaNowAll)
