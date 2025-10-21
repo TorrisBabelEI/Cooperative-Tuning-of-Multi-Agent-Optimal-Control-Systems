@@ -157,11 +157,9 @@ class MultiPDP:
         # acquire shepherding boundaries
         self.defineHalfspaces(resultDictList, initialStateAll, initialThetaAll, legendFlag=self.legendFlag)
 
-        if not self.graphPeriodicFlag:
-            for pdp in self.listPDP:
-                    pdp.setConstraints(self.zeta, self.iota, self.sigma, self.alpha,
-                                       self.rho, self.incidenceMat, self.edges, self.relativePosition)
-                    # See the function in PDP.py for details
+        for pdp in self.listPDP:
+            pdp.setConstraints(self.zeta, self.iota, self.sigma, self.alpha)
+            # See the function in PDP.py for details
 
         thetaNowAll = initialThetaAll
         lossTraj = list()
@@ -174,9 +172,6 @@ class MultiPDP:
                 idxGraph = int(idxIter % len(self.adjacencyMatList))
                 # self.generateMetropolisWeight(self.adjacencyMatList[idxGraph])
                 self.generateRegularEdgeAgreement(self.adjacencyMatList[idxGraph])
-                for pdp in self.listPDP:
-                    pdp.setConstraints(self.zeta, self.iota, self.sigma, self.alpha,
-                                       self.rho, self.incidenceMat, self.edges, self.relativePosition)
 
             # error among theta
             thetaErrorTraj.append(self.computeThetaError(thetaNowAll))
