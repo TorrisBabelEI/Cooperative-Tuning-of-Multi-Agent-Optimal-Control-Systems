@@ -12,7 +12,8 @@ class MultiPDP:
     optMethodStr: str  # a string for optimization method
 
     def __init__(self, listOcSystem: list, adjacencyMat, graphPeriodicFlag=False,
-                 xlim = [-2.4, 2.4], ylim = [-1.8, 1.6], sigma = 1, alpha = None, legendFlag=False):
+                 xlim = [-2.4, 2.4], ylim = [-1.8, 1.6], sigma = 1, alpha = None,
+                 rho = 0.5, legendFlag=False):
 
         self.listOcSystem = listOcSystem
         self.numAgent = len(listOcSystem)
@@ -20,14 +21,22 @@ class MultiPDP:
         self.graphPeriodicFlag = graphPeriodicFlag
         self.xlim = xlim
         self.ylim = ylim
-        self.zeta = None  # Halfspace matrix (zeta^T y <= iota)
+        self.zeta = None  # Transposed halfspace matrix (zeta^T y <= iota)
         self.iota = None  # Halfspace vector
         self.sigma = sigma    # Softplus parameter
         self.alpha = alpha    # Leaky parameter for softplus function
+        if rho < 0 or rho > 1:
+            raise ValueError('rho should be in [0, 1].')
+        self.rho = 1.0 if graphPeriodicFlag else rho    # rho in [0, 1], trading-off between shepherding and edge agreement
+                                                        # for periodic graph, only shepherding is considered for now due to complexity
         self.legendFlag = legendFlag
+        self.edges = []
+        self.incidenceMat = []
+        self.relativePosition = []
         if not graphPeriodicFlag:
             self.adjacencyMat = adjacencyMat
             self.generateMetropolisWeight(adjacencyMat)
+            self.generateRegularEdgeAgreement(adjacencyMat)
         else:
             self.adjacencyMatList = adjacencyMat
         self.listPDP = list()
@@ -59,36 +68,35 @@ class MultiPDP:
         # allocate weights for diagonal
         for idx in range(self.numAgent):
             self.weightMat[idx][idx] = weightMatSelf[idx]
-
-    def generateIncidenceMatrix(self, adjacencyMat):
+    
+    def generateRegularEdgeAgreement(self, adjacencyMat, radius = 1.0, rotation = 0.0):
         # Generate incidence matrix based on the adjacency matrix of an undirected graoh
         symmetric_flag = np.array_equal(adjacencyMat, adjacencyMat.T)
         if not symmetric_flag:
             raise ValueError('Invalid Adjacency Matrix.')
-        
+
+        numAgent = adjacencyMat.shape[0]
         edges = []
-        for i in range(adjacencyMat.shape[0]):
-            for j in range(i + 1, adjacencyMat.shape[0]):
+        for i in range(numAgent):
+            for j in range(i + 1, numAgent):
                 if adjacencyMat[i, j] != 0:
                     edges.append((i, j))
 
-        incidenceMat = np.zeros((adjacencyMat.shape[0], len(edges)))
+        incidenceMat = np.zeros((numAgent, len(edges)))
 
         for k, (i, j) in enumerate(edges):
             incidenceMat[i, k] = 1
             incidenceMat[j, k] = -1
 
-        return incidenceMat, edges
-    
-    def generateRegularEdgeAgreement(self, adjacencyMat, radius = 1.0, rotation = 0.0):
         # Generate relative state variables difference for edge agreement 
-        incidenceMat, edges = self.generateIncidenceMatrix(adjacencyMat)
-        angles = np.linspace(0, 2*np.pi, adjacencyMat.shape[0], endpoint=False) + rotation
+        angles = np.linspace(0, 2*np.pi, numAgent, endpoint=False) + rotation
         x = radius * np.cos(angles)
         y = radius * np.sin(angles)
         pos = np.vstack((x, y))
 
-        return pos @ incidenceMat
+        self.edges = edges
+        self.incidenceMat = incidenceMat
+        self.relativePosition = pos @ incidenceMat
 
 
     def generateRandomInitialTheta(self, radius: float, center=[0.0, 0.0], headingRange=[-3.14, 3.14]):
@@ -149,6 +157,12 @@ class MultiPDP:
         # acquire shepherding boundaries
         self.defineHalfspaces(resultDictList, initialStateAll, initialThetaAll, legendFlag=self.legendFlag)
 
+        if not self.graphPeriodicFlag:
+            for pdp in self.listPDP:
+                    pdp.setConstraints(self.zeta, self.iota, self.sigma, self.alpha,
+                                       self.rho, self.incidenceMat, self.relativePosition)
+                    # See the function in PDP.py for details
+
         thetaNowAll = initialThetaAll
         lossTraj = list()
         thetaAllTraj  = list()
@@ -159,6 +173,10 @@ class MultiPDP:
             if self.graphPeriodicFlag:
                 idxGraph = int(idxIter % len(self.adjacencyMatList))
                 self.generateMetropolisWeight(self.adjacencyMatList[idxGraph])
+                self.generateRegularEdgeAgreement(self.adjacencyMatList[idxGraph])
+                for pdp in self.listPDP:
+                    pdp.setConstraints(self.zeta, self.iota, self.sigma, self.alpha,
+                                       self.rho, self.incidenceMat, self.relativePosition)
 
             # error among theta
             thetaErrorTraj.append(self.computeThetaError(thetaNowAll))
@@ -288,9 +306,6 @@ class MultiPDP:
                                 terminal_states = thetaAll,
                                 xlim = self.xlim, ylim = self.ylim, 
                                 numAgent = self.numAgent, legendFlag = legendFlag)
-        
-        for pdp in self.listPDP:
-            pdp.setConstraints(self.zeta, self.iota, self.sigma, self.alpha)   # See the function in PDP.py for details
         
 
     def visualize(self, resultDictList, initialStateAll, thetaAll, blockFlag=True, legendFlag=True):

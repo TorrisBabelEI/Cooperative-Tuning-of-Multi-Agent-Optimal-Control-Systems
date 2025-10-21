@@ -23,7 +23,7 @@ class PDP:
         self.matI = np.eye(self.DynSystem.dimStates)  # identity matrix
         self.diffPMP()
 
-    def diffPMP(self, zeta = None, iota = None, sigma = 1, alpha = None):
+    def diffPMP(self, zeta = None, iota = None, sigma = 1, alpha = None, rho = 1.0, incidenceMat = None, relativePosition = None):
         # define the Hamiltonian function
         self.costates = casadi.SX.sym("lambda", self.DynSystem.dimStates)
         self.theta = self.DynSystem.theta
@@ -34,7 +34,8 @@ class PDP:
         self.terminalHamilton = self.DynSystem._terminalCostFun(self.DynSystem.states, self.theta)
 
         # loss function
-        self.loss = self.DynSystem._lossFun(self.xXi, self.uXi, self.theta, zeta, iota, sigma, alpha)
+        self.loss = self.DynSystem._lossFun(self.xXi, self.uXi, self.theta,
+                                            zeta, iota, sigma, alpha, rho, incidenceMat, relativePosition)
         # We don't have zeta and sigma yet, let it be None for now
         self.dLdXi = casadi.jacobian(self.loss, self.xi)
         self.dLdTheta = casadi.jacobian(self.loss, self.theta) # partial derivative
@@ -94,10 +95,12 @@ class PDP:
         self.ddhdxdxFun = casadi.Function('ddhdxdxFun', [self.DynSystem.states, self.theta], [self.ddhdxdx])
         self.ddhdxdeFun = casadi.Function('ddhdxdeFun', [self.DynSystem.states, self.theta], [self.ddhdxde])
 
-    def setConstraints(self, zeta, iota, sigma = 1, alpha = None):
+    def setConstraints(self, zeta, iota, sigma = 1, alpha = None, rho = 1.0, incidenceMat = None, relativePosition = None):
         zeta, iota = casadi.DM(zeta), casadi.DM(iota)
+        incidenceMat = casadi.DM(incidenceMat) if incidenceMat is not None else None
+        relativePosition = casadi.DM(relativePosition) if relativePosition is not None else None
         # Update loss with acquired zeta and iota
-        self.diffPMP(zeta, iota, sigma, alpha)
+        self.diffPMP(zeta, iota, sigma, alpha, rho, incidenceMat, relativePosition)
 
     def solve(self, initialState, thetaInit, paraDict: dict):
         # load the optimization function based on paraDict

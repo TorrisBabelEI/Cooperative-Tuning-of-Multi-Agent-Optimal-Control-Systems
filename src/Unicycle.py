@@ -101,7 +101,8 @@ class Unicycle:
             dynCons = casadi.vertcat(dynCons, currentCons)
         return dynCons
 
-    def _lossFun(self, xAll, uAll, theta, zeta = None, iota = None, sigma = 1, alpha = None):
+    def _lossFun(self, xAll, uAll, theta, zeta = None, iota = None, sigma = 1, alpha = None,
+                 rho = 1.0, incidenceMat = None, relativePosition = None):
         # xTerminal = xAll[self.dimStatesAll-self.dimStates:]
 
         # Heading error was not used in the demo
@@ -114,22 +115,29 @@ class Unicycle:
 
         # Construct out-of-shepherding-boundary loss here
         loss = 0.0
-        if alpha is None:           # Use softplus
-            print(f'Softplus function with sigma = {sigma}.')
-            if iota is not None:
-                for step in range(self.horizonSteps + 1):
-                    posStep = casadi.vertcat(xAll[self.dimStates * step],
-                                            xAll[self.dimStates * step + 1])   # Extract positions at each step
-                    loss += casadi.sum1(self.softplus(casadi.mtimes(zeta, posStep) - iota, sigma))
-        else:                       # Use leaky softplus
-            print(f'Leaky softplus function with sigma = {sigma}, alpha = {alpha}.')
-            if iota is not None:
-                for step in range(self.horizonSteps + 1):
-                    posStep = casadi.vertcat(xAll[self.dimStates * step],
-                                            xAll[self.dimStates * step + 1])
-                    loss += casadi.sum1(self.leakySoftplus(casadi.mtimes(zeta, posStep) - iota, sigma, alpha))
-
-        # Need to add edge agreement loss later
+        if rho > 0.0:   # Shepherding loss is considered
+            if alpha is None:           # Use softplus
+                print(f'Softplus function with sigma = {sigma}.')
+                if iota is not None:
+                    for step in range(self.horizonSteps + 1):
+                        posStep = casadi.vertcat(xAll[self.dimStates * step],
+                                                xAll[self.dimStates * step + 1])   # Extract positions at each step
+                        loss += rho*casadi.sum1(self.softplus(casadi.mtimes(zeta, posStep) - iota, sigma))
+            else:                       # Use leaky softplus
+                print(f'Leaky softplus function with sigma = {sigma}, alpha = {alpha}.')
+                if iota is not None:
+                    for step in range(self.horizonSteps + 1):
+                        posStep = casadi.vertcat(xAll[self.dimStates * step],
+                                                xAll[self.dimStates * step + 1])
+                        loss += rho*casadi.sum1(self.leakySoftplus(casadi.mtimes(zeta, posStep) - iota, sigma, alpha))
+        
+        if incidenceMat is not None and rho < 1.0:
+            # Construct edge agreement loss here
+            for step in range(self.horizonSteps + 1):
+                posStep = casadi.vertcat(xAll[self.dimStates * step],
+                                         xAll[self.dimStates * step + 1])
+                relativePosStep = casadi.mtimes(incidenceMat.T, posStep)    # Relative positions for all edges
+                loss += (1 - rho) * casadi.sum1(casadi.square(relativePosStep - relativePosition))
 
         return loss
     
