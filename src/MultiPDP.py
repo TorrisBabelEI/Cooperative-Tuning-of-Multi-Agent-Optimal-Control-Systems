@@ -194,7 +194,7 @@ class MultiPDP:
             # exchange information and update theta
             if idxIter < maxIter:
                 # thetaNextAll = np.matmul(self.weightMat, thetaNowAll) - stepSize * shepherdingGradientMatNow
-                thetaNextAll = thetaNowAll - stepSize * np.exp(-idxIter/20) * totalGradient
+                thetaNextAll = thetaNowAll - stepSize * np.exp(-idxIter/50) * totalGradient
             else:
                 # thetaNextAll = np.matmul(self.weightMat, thetaNowAll)
                 thetaNextAll = thetaNowAll

@@ -59,7 +59,7 @@ if __name__ == '__main__':
         listOcSystem.append(OcSystem(DynSystem=Unicycle(configDict), configDict=configDict))
     # initialize multiple agents in a Cooperative Tuning Framework
     MyMultiPDP = MultiPDP(listOcSystem, adjacencyMat, xlim = [-10, 10], ylim = [-10, 10],
-                          sigma = 0.5, alpha = None, rho = 0.382, legendFlag=True)
+                          sigma = 0.5, alpha = None, rho = 0.5, legendFlag=True)
     # alpha = None: use softplus; alpha is a non-negative number: use leaky softplus
     # rho: in [0, 1], trading-off between shepherding and edge agreement
 
