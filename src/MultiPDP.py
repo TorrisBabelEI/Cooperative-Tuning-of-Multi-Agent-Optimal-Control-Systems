@@ -225,6 +225,8 @@ class MultiPDP:
         for idx in range(self.numAgent):
             print(f'Final Trajectory of Agent {idx}: \n', resultDictList[idx]["xTraj"])
 
+        print(f'Final Theta of All Agents: \n {thetaNowAll}')
+
         # plot the loss
         self.plotLossTraj(lossTraj, thetaErrorTraj, blockFlag=False)
 
