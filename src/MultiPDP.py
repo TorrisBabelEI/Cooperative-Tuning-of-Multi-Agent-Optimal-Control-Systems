@@ -202,7 +202,10 @@ class MultiPDP:
             gradientNorm = np.linalg.norm(totalGradient, axis=1).sum()
             thetaNowAll = thetaNextAll
             
-            printStr = 'Iter:' + str(idxIter) + ', mean loss:' + str(shepherdingLossNow) + ', formation error:' + str(formationLoss) + ', grad norm:' + str(gradientNorm) + ', theta error:' + str(thetaErrorTraj[idxIter])
+            if thetaErrorTraj is not None:
+                printStr = 'Iter:' + str(idxIter) + ', mean loss:' + str(shepherdingLossNow) + ', formation error:' + str(formationLoss) + ', grad norm:' + str(gradientNorm) + ', theta error:' + str(thetaErrorTraj[idxIter])
+            else:
+                printStr = 'Iter:' + str(idxIter) + ', mean loss:' + str(shepherdingLossNow) + ', formation error:' + str(formationLoss) + ', grad norm:' + str(gradientNorm)
             print(printStr)
 
             # if (gradientNorm <= 0.01) and (thetaErrorTraj[idxIter] <= 0.001):
@@ -338,12 +341,13 @@ class MultiPDP:
         ax1.set_ylabel("Total Loss (Relative)")
         ax1.xaxis.set_major_locator(MaxNLocator(integer=True))
 
-        ax2.plot(np.arange(len(thetaErrorTraj), dtype=int), thetaErrorTraj, color="blue", linewidth=2)
-        # ax2.set_title("Theta error")
-        # ax2.legend(["error"])
-        ax2.set_xlabel("Iteration")
-        ax2.set_ylabel("Error")
-        ax2.xaxis.set_major_locator(MaxNLocator(integer=True))
+        if thetaErrorTraj is not None:
+            ax2.plot(np.arange(len(thetaErrorTraj), dtype=int), thetaErrorTraj, color="blue", linewidth=2)
+            # ax2.set_title("Theta error")
+            # ax2.legend(["error"])
+            ax2.set_xlabel("Iteration")
+            ax2.set_ylabel("Error")
+            ax2.xaxis.set_major_locator(MaxNLocator(integer=True))
 
         plt.show(block=blockFlag)
 
