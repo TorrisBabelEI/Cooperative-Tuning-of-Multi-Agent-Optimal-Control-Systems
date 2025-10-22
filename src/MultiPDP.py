@@ -165,7 +165,10 @@ class MultiPDP:
         lossTraj = list()
         thetaAllTraj  = list()
         thetaErrorTraj = list()
-        idxIterMargin = 20
+        formationErrorTraj = list()
+        maxIter = paraDict["maxIter"]
+        rho = self.rho
+        stepSize = paraDict["stepSize"]
         for idxIter in range(int(paraDict["maxIter"])):
             # for dynamic periodic graph
             if self.graphPeriodicFlag:
@@ -173,36 +176,42 @@ class MultiPDP:
                 # self.generateMetropolisWeight(self.adjacencyMatList[idxGraph])
                 self.generateRegularEdgeAgreement(self.adjacencyMatList[idxGraph])
 
-            # error among theta
-            thetaErrorTraj.append(self.computeThetaError(thetaNowAll))
-            # compute the gradients
-            lossNow, lossVecNow, gradientMatNow = self.computeGradient(initialStateAll, thetaNowAll)
+            # error among theta (not using consensus)
+            # thetaErrorTraj.append(self.computeThetaError(thetaNowAll))
+            
+            # compute the gradients (this also returns the trajectories for formation loss)
+            shepherdingLossNow, _, shepherdingGradientMatNow, resultDictList = self.computeShepherdingLossGradient(initialStateAll, thetaNowAll)
+            
+            # compute formation loss and its gradient using the already computed trajectories
+            formationLoss, formationGradient = self.computeFormationLossAndGradient(resultDictList, thetaNowAll)
+            formationErrorTraj.append(formationLoss)
+            
+            # combine gradients with rho weighting
+            totalGradient = (1 - rho) * shepherdingGradientMatNow + rho * formationGradient
+            
             # exchange information and update theta
-            if idxIter < idxIterMargin:
-                # thetaNextAll = np.matmul(self.weightMat, thetaNowAll) - paraDict["stepSize"] * gradientMatNow
-                thetaNextAll = thetaNowAll - paraDict["stepSize"] * gradientMatNow
+            if idxIter < maxIter:
+                # thetaNextAll = np.matmul(self.weightMat, thetaNowAll) - stepSize * shepherdingGradientMatNow
+                thetaNextAll = thetaNowAll - stepSize * totalGradient
             else:
                 # thetaNextAll = np.matmul(self.weightMat, thetaNowAll)
                 thetaNextAll = thetaNowAll
 
-            lossTraj.append(lossNow)
+            lossTraj.append(rho*shepherdingLossNow + (1-rho)*formationLoss)
             thetaAllTraj.append(thetaNowAll)
-            gradientNorm = np.linalg.norm(gradientMatNow, axis=1).sum()
+            gradientNorm = np.linalg.norm(totalGradient, axis=1).sum()
             thetaNowAll = thetaNextAll
-            if idxIter >= idxIterMargin:
-                gradientNorm = 0.0
-
-            printStr = 'Iter:' + str(idxIter) + ', mean loss:' + str(lossNow) + ', grad norm:' + str(gradientNorm) + ', theta error:' + str(thetaErrorTraj[idxIter])
+            
+            printStr = 'Iter:' + str(idxIter) + ', mean loss:' + str(shepherdingLossNow) + ', formation error:' + str(formationLoss) + ', grad norm:' + str(gradientNorm) + ', theta error:' + str(thetaErrorTraj[idxIter])
             print(printStr)
 
-            if (gradientNorm <= 0.01) and (thetaErrorTraj[idxIter] <= 0.001):
+            # if (gradientNorm <= 0.01) and (thetaErrorTraj[idxIter] <= 0.001):
+            if gradientNorm <= 1e-4:
                 break
 
-        # last one
-        resultDictList = list()
+        # final computation using the last iteration's trajectories
         lossVec = np.zeros((self.numAgent))
         for idx in range(self.numAgent):
-            resultDictList.append(self.listOcSystem[idx].solve(initialStateAll[idx], thetaNowAll[idx]))
             lossVec[idx] = self.listPDP[idx].lossFun(resultDictList[idx]["xi"], thetaNowAll[idx]).full()[0, 0]
 
         print('Iter:', idxIter + 1, ' loss:', lossVec.sum())
@@ -218,15 +227,18 @@ class MultiPDP:
 
         plt.show()
 
-    def computeGradient(self, initialStateAll, thetaNowAll):
-        lossVec = np.zeros((self.numAgent))
+    def computeShepherdingLossGradient(self, initialStateAll, thetaNowAll):
+        shepherdingLossVec = np.zeros((self.numAgent))
         # i-th row is the full gradient for agent-i
         gradientMat = np.zeros((self.numAgent, self.listOcSystem[0].DynSystem.dimParameters))
+        resultDictList = list()
         for idx in range(self.numAgent):
             resultDict = self.listOcSystem[idx].solve(initialStateAll[idx], thetaNowAll[idx])
+            resultDictList.append(resultDict)
             lqrSystem = self.listPDP[idx].getLqrSystem(resultDict, thetaNowAll[idx])
             resultLqr = self.listPDP[idx].solveLqr(lqrSystem)
-            lossVec[idx] = self.listPDP[idx].lossFun(resultDict["xi"], thetaNowAll[idx]).full()[0, 0]
+            shepherdingLossVec[idx] = self.listPDP[idx].lossFun(resultDict["xi"], thetaNowAll[idx]).full()[0, 0]
+            shepherdingLossVec /= self.numAgent
             dLdXi = self.listPDP[idx].dLdXiFun(resultDict["xi"], thetaNowAll[idx])
             dXidTheta = np.vstack((np.concatenate(resultLqr["XTrajList"], axis=0),
                 np.concatenate(resultLqr["UTrajList"], axis=0)))
@@ -235,8 +247,9 @@ class MultiPDP:
 
             # this is full derivative
             gradientMat[idx, :] = np.array(np.dot(dLdXi, dXidTheta) + dLdTheta).flatten()
+            gradientMat /= self.numAgent
 
-        return lossVec.sum()/self.numAgent, lossVec, gradientMat
+        return shepherdingLossVec.sum(), shepherdingLossVec, gradientMat, resultDictList
 
     def computeThetaError(self, thetaNowAll):
         error = 0.0
@@ -245,14 +258,84 @@ class MultiPDP:
                 error += np.linalg.norm(thetaNowAll[i, :] - thetaNowAll[j, :]) ** 2
         return error
 
-    def plotLossTraj(self, lossTraj, thetaErrorTraj, blockFlag=True):
-        _, (ax1, ax2) = plt.subplots(2, 1)
+    def computeFormationLossAndGradient(self, resultDictList, thetaNowAll):
+        """
+        Compute formation loss and its gradient with respect to theta parameters using LQR system.
+        
+        Args:
+            resultDictList: List of result dictionaries from each agent's optimal control solution
+            thetaNowAll: Current theta values for all agents
+            
+        Returns:
+            formation_loss: Total formation loss across all agents and edges
+            formation_gradient: Gradient matrix of shape (numAgent, dimParameters)
+        """
+        formation_loss = 0.0
+        formation_gradient = np.zeros((self.numAgent, self.listOcSystem[0].DynSystem.dimParameters))
+        
+        # Pre-compute LQR systems for all agents
+        dXidTheta_list = []
+        for idx in range(self.numAgent):
+            lqrSystem = self.listPDP[idx].getLqrSystem(resultDictList[idx], thetaNowAll[idx])
+            resultLqr = self.listPDP[idx].solveLqr(lqrSystem)
+            
+            # Get sensitivity matrices for agent idx
+            dXidTheta = np.vstack((np.concatenate(resultLqr["XTrajList"], axis=0),
+                                   np.concatenate(resultLqr["UTrajList"], axis=0)))
+            dXidTheta_list.append(dXidTheta)
+        
+        # Iterate directly through edges
+        for edge_idx, (i, j) in enumerate(self.edges):
+            # Get trajectories for both agents
+            traj_i = resultDictList[i]["xTraj"]  # Shape: (horizon+1, dimStates)
+            traj_j = resultDictList[j]["xTraj"]  # Shape: (horizon+1, dimStates)
+            
+            # Get desired relative position from incidence matrix
+            desired_relative_pos = self.relativePosition[:, edge_idx]  # Shape: (2,)
+            
+            # Compute formation loss and gradient over the entire trajectory
+            for t in range(traj_i.shape[0]):
+                # Extract position components (x, y) from state
+                pos_i = traj_i[t, :2]  # Position of agent i at time t
+                pos_j = traj_j[t, :2]  # Position of agent j at time t
+                
+                # Compute actual relative position
+                actual_relative_pos = pos_i - pos_j
+                
+                # Compute error: difference between actual and desired relative positions
+                diff_pos = actual_relative_pos - desired_relative_pos
+                
+                # Add to formation loss (using L2 norm)
+                formation_loss += np.linalg.norm(diff_pos) ** 2
+                
+                # Compute gradient contributions for both agents i and j
+                # For agent i: d/dtheta_i ||diff_pos||^2 = 2 * diff_pos^T * d/dtheta_i pos_i
+                # For agent j: d/dtheta_j ||diff_pos||^2 = -2 * diff_pos^T * d/dtheta_j pos_j
+                
+                # Agent i gradient
+                state_idx = t * self.listOcSystem[0].DynSystem.dimStates
+                pos_sensitivity_i = dXidTheta_list[i][state_idx:state_idx+2, :]  # Shape: (2, dimParameters)
+                gradient_contribution_i = 2 * np.dot(diff_pos, pos_sensitivity_i)
+                formation_gradient[i, :] += gradient_contribution_i
+                
+                # Agent j gradient (note the negative sign)
+                pos_sensitivity_j = dXidTheta_list[j][state_idx:state_idx+2, :]  # Shape: (2, dimParameters)
+                gradient_contribution_j = -2 * np.dot(diff_pos, pos_sensitivity_j)
+                formation_gradient[j, :] += gradient_contribution_j
+        
+        # Normalize by number of edges
+        num_edges = len(self.edges)
+        return formation_loss / num_edges, formation_gradient / num_edges
+
+    def plotLossTraj(self, lossTraj, thetaErrorTraj=None, blockFlag=True):
+        if thetaErrorTraj is not None:
+            _, (ax1, ax2) = plt.subplots(2, 1)
+        else:
+            _, ax1 = plt.subplots(1, 1)
+            
         lossTraj = lossTraj / lossTraj[0]
         ax1.plot(np.arange(len(lossTraj), dtype=int), lossTraj, color="blue", linewidth=2)
-        # ax1.set_title("Loss")
-        # ax1.legend(["Loss"])
-        # ax1.set_xlabel("Iteration")
-        ax1.set_ylabel("Loss (Relative)")
+        ax1.set_ylabel("Total Loss (Relative)")
         ax1.xaxis.set_major_locator(MaxNLocator(integer=True))
 
         ax2.plot(np.arange(len(thetaErrorTraj), dtype=int), thetaErrorTraj, color="blue", linewidth=2)
