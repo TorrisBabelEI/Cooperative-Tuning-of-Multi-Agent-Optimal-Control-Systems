@@ -128,6 +128,8 @@ class Unicycle:
                     posStep = casadi.vertcat(xAll[self.dimStates * step],
                                             xAll[self.dimStates * step + 1])
                     shepheringLoss += casadi.sum1(self.leakySoftplus(casadi.mtimes(zeta, posStep) - iota, sigma, alpha))
+
+        return shepheringLoss
     
     def softplus(self, lossStep, sigma):
         """
