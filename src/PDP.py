@@ -35,7 +35,6 @@ class PDP:
 
         # loss function
         self.loss = self.DynSystem._lossFun(self.xXi, self.uXi, self.theta, zeta, iota, sigma, alpha)
-        # We don't have zeta and sigma yet, let it be None for now
         self.dLdXi = casadi.jacobian(self.loss, self.xi)
         self.dLdTheta = casadi.jacobian(self.loss, self.theta) # partial derivative
         self.lossFun = casadi.Function("lossFun", [self.xi, self.theta], [self.loss])

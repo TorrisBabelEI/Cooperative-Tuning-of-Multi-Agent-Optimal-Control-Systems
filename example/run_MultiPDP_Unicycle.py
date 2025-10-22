@@ -72,7 +72,7 @@ if __name__ == '__main__':
     print("initialThetaAll:")
     print(initialThetaAll)
 
-    paraDict = {"stepSize": 0.1, "maxIter": 100}
+    paraDict = {"stepSize": 0.05, "maxIter": 100}
 
     # run the algorithm
     MyMultiPDP.solve(initialStateAll, initialThetaAll, paraDict=paraDict)

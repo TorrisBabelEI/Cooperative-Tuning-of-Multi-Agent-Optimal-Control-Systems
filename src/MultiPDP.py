@@ -29,6 +29,8 @@ class MultiPDP:
             raise ValueError('rho should be in [0, 1].')
         self.rho = 1.0 if graphPeriodicFlag else rho    # rho in [0, 1], trading-off between shepherding and edge agreement
                                                         # for periodic graph, only shepherding is considered for now due to complexity
+        self.formationRadius = 1.0
+        self.formationRotation = 0.0
         self.legendFlag = legendFlag
         self.edges = []
         self.incidenceMat = []
@@ -36,7 +38,7 @@ class MultiPDP:
         if not graphPeriodicFlag:
             self.adjacencyMat = adjacencyMat
             # self.generateMetropolisWeight(adjacencyMat)
-            self.generateRegularEdgeAgreement(adjacencyMat)
+            self.generateRegularEdgeAgreement(adjacencyMat, radius=self.formationRadius, rotation=self.formationRotation)
         else:
             self.adjacencyMatList = adjacencyMat
         self.listPDP = list()
@@ -174,7 +176,7 @@ class MultiPDP:
             if self.graphPeriodicFlag:
                 idxGraph = int(idxIter % len(self.adjacencyMatList))
                 # self.generateMetropolisWeight(self.adjacencyMatList[idxGraph])
-                self.generateRegularEdgeAgreement(self.adjacencyMatList[idxGraph])
+                self.generateRegularEdgeAgreement(self.adjacencyMatList[idxGraph], radius=self.formationRadius, rotation=self.formationRotation)
 
             # error among theta (not using consensus)
             # thetaErrorTraj.append(self.computeThetaError(thetaNowAll))
@@ -192,20 +194,21 @@ class MultiPDP:
             # exchange information and update theta
             if idxIter < maxIter:
                 # thetaNextAll = np.matmul(self.weightMat, thetaNowAll) - stepSize * shepherdingGradientMatNow
-                thetaNextAll = thetaNowAll - stepSize * totalGradient
+                thetaNextAll = thetaNowAll - stepSize * np.exp(-idxIter/20) * totalGradient
             else:
                 # thetaNextAll = np.matmul(self.weightMat, thetaNowAll)
                 thetaNextAll = thetaNowAll
 
-            lossTraj.append(rho*shepherdingLossNow + (1-rho)*formationLoss)
+            totalLoss = rho*shepherdingLossNow + (1-rho)*formationLoss
+            lossTraj.append(totalLoss)
             thetaAllTraj.append(thetaNowAll)
             gradientNorm = np.linalg.norm(totalGradient, axis=1).sum()
             thetaNowAll = thetaNextAll
             
-            if thetaErrorTraj is not None:
-                printStr = 'Iter:' + str(idxIter) + ', mean loss:' + str(shepherdingLossNow) + ', formation error:' + str(formationLoss) + ', grad norm:' + str(gradientNorm) + ', theta error:' + str(thetaErrorTraj[idxIter])
+            if thetaErrorTraj:
+                printStr = 'Iter:' + str(idxIter) + ', mean loss:' + str(totalLoss) + ', grad norm:' + str(gradientNorm) + ', theta error:' + str(thetaErrorTraj[idxIter])
             else:
-                printStr = 'Iter:' + str(idxIter) + ', mean loss:' + str(shepherdingLossNow) + ', formation error:' + str(formationLoss) + ', grad norm:' + str(gradientNorm)
+                printStr = 'Iter:' + str(idxIter) + ', mean loss:' + str(totalLoss) + ', grad norm:' + str(gradientNorm)
             print(printStr)
 
             # if (gradientNorm <= 0.01) and (thetaErrorTraj[idxIter] <= 0.001):
@@ -330,8 +333,8 @@ class MultiPDP:
         num_edges = len(self.edges)
         return formation_loss / num_edges, formation_gradient / num_edges
 
-    def plotLossTraj(self, lossTraj, thetaErrorTraj=None, blockFlag=True):
-        if thetaErrorTraj is not None:
+    def plotLossTraj(self, lossTraj, thetaErrorTraj, blockFlag=True):
+        if thetaErrorTraj:
             _, (ax1, ax2) = plt.subplots(2, 1)
         else:
             _, ax1 = plt.subplots(1, 1)
@@ -341,7 +344,7 @@ class MultiPDP:
         ax1.set_ylabel("Total Loss (Relative)")
         ax1.xaxis.set_major_locator(MaxNLocator(integer=True))
 
-        if thetaErrorTraj is not None:
+        if thetaErrorTraj:
             ax2.plot(np.arange(len(thetaErrorTraj), dtype=int), thetaErrorTraj, color="blue", linewidth=2)
             # ax2.set_title("Theta error")
             # ax2.legend(["error"])
@@ -407,6 +410,28 @@ class MultiPDP:
             for Ai, bi in zip(self.zeta, self.iota):
                 self.plotAHalfspace(ax1, Ai, bi)
 
+        # Plot ideal formation polygon
+        if self.relativePosition.any():
+            # Calculate center of final positions (thetaAll)
+            center_x = np.mean(thetaAll[:, 0])
+            center_y = np.mean(thetaAll[:, 1])
+            
+            # Generate ideal formation positions
+            angles = np.linspace(0, 2*np.pi, self.numAgent, endpoint=False) + self.formationRotation
+            ideal_x = center_x + self.formationRadius * np.cos(angles)
+            ideal_y = center_y + self.formationRadius * np.sin(angles)
+            
+            # Plot ideal formation polygon
+            ideal_positions = np.column_stack((ideal_x, ideal_y))
+            # Close the polygon by adding the first point at the end
+            ideal_positions_closed = np.vstack([ideal_positions, ideal_positions[0]])
+            ax1.plot(ideal_positions_closed[:, 0], ideal_positions_closed[:, 1], 
+                    color='purple', linestyle=':', linewidth=2, alpha=0.7, label='Ideal Formation')
+            
+            # Plot ideal formation vertices
+            ax1.scatter(ideal_x, ideal_y, marker='s', color='purple', s=10, alpha=0.7, 
+                       label='Ideal Positions')
+
         # ax1.set_title("Trajectory")
         ax1.set_xlabel("x [m]")
         ax1.set_ylabel("y [m]")
@@ -426,6 +451,11 @@ class MultiPDP:
             if self.iota is not None:
                 handles.append(plt.plot([],[], linestyle='-.', color="red", linewidth=2)[0])
                 labels.append("Shepherding Bondary")
+            if self.relativePosition.any():
+                handles.append(plt.plot([],[], linestyle=':', color="purple", linewidth=2)[0])
+                labels.append("Ideal Formation")
+                handles.append(plt.scatter([], [], marker='s', color='purple', s=10))
+                labels.append("Ideal Positions")
             plt.legend(handles, labels, bbox_to_anchor=(1, 1), loc="upper left", framealpha=1)
 
         _, (ax21, ax22, ax23) = plt.subplots(3, 1)
